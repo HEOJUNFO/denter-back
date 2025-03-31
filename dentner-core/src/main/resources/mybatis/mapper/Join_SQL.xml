@@ -1,0 +1,192 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.JoinMapper">
+    <insert id="insertMember" useGeneratedKeys="true" keyProperty="memberNo">
+        INSERT INTO T_MEMBER
+        (
+              MEMBER_TP
+            , MEMBER_SE
+            , MEMBER_EMAIL
+            , MEMBER_NAME
+            <if test="@com.dentner.core.util.MybatisUtils@isEmpty(socialSe)">
+            , MEMBER_PASSWORD
+            </if>
+            , MEMBER_HP_NATION
+            , MEMBER_HP
+            , MEMBER_ALARM_AT
+            , MEMBER_ALARM_SE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberTp)">
+            , MEMBER_LICENSE_NUMBER
+            , MEMBER_DENTISTRY_NAME
+            </if>
+            , MEMBER_BUSINESS_NUMBER
+            , MEMBER_ADDRESS
+            , MEMBER_DETAIL_ADDRESS
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',memberTp)">
+            , MEMBER_FIRST_NAME
+            , MEMBER_LAST_NAME
+            , MEMBER_BUSINESS_NAME
+            , MEMBER_JOB_SE
+            , MEMBER_TIMEZONE_NO
+            </if>
+            , MEMBER_APPROVAL_SE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B', memberSe) ||
+            @com.dentner.core.util.MybatisUtils@equals('C', memberSe)">
+            , MEMBER_REPRESENTATIVE_NAME
+            , MEMBER_BANK_NO
+            , MEMBER_ACCOUNT_NAME
+            , MEMBER_ACCOUNT_NUMBER
+            </if>
+            , MEMBER_MARKETING_AT
+            <if test="@com.dentner.core.util.MybatisUtils@equals('Y',memberMarketingAt)">
+            , MEMBER_MARKETING_DT
+            </if>
+        ) VALUES (
+              #{memberTp}
+            , #{memberSe}
+            , #{memberEmail}
+            , #{memberName}
+            <if test="@com.dentner.core.util.MybatisUtils@isEmpty(socialSe)">
+            , #{memberPassword}
+            </if>
+            , #{memberHpNation}
+            , #{memberHp}
+            , #{memberAlarmAt}
+            , #{memberAlarmSe}
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberTp)">
+            , #{memberLicenseNumber}
+            , #{memberDentistryName}
+            </if>
+            , #{memberBusinessNumber}
+            , #{memberAddress}
+            , #{memberDetailAddress}
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',memberTp)">
+            , #{memberFirstName}
+            , #{memberLastName}
+            , #{memberBusinessName}
+            , #{memberJobSe}
+            , #{memberTimezoneNo}
+            </if>
+            , 'A'
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B', memberSe) ||
+            @com.dentner.core.util.MybatisUtils@equals('C', memberSe)">
+            , #{memberRepresentativeName}
+            , #{memberBankNo}
+            , #{memberAccountName}
+            , #{memberAccountNumber}
+            </if>
+            , #{memberMarketingAt}
+            <if test="@com.dentner.core.util.MybatisUtils@equals('Y',memberMarketingAt)">
+            , NOW()
+            </if>
+        )
+    </insert>
+
+    <select id="selectMember">
+        SELECT COUNT(*) AS CNT
+        FROM T_MEMBER
+        WHERE MEMBER_EMAIL = #{memberEmail}
+    </select>
+
+    <select id="selectMemberPhone">
+        SELECT COUNT(*) AS CNT
+        FROM T_MEMBER
+        WHERE MEMBER_HP_NATION = #{memberHpNation}
+        AND MEMBER_HP = #{memberHp}
+        AND DELETED_AT = 'N'
+    </select>
+
+    <select id="selectTerms" resultType="com.dentner.core.cmmn.vo.TermsVo">
+        SELECT
+            TERMS_CN, TERMS_SE, TERMS_NO
+        FROM T_TERMS
+        WHERE TERMS_SE = #{termsSe}
+          AND DELETED_AT = 'N'
+
+    </select>
+
+    <select id="selectDupNickName" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MEMBER_PROFILE
+        WHERE MEMBER_NICK_NAME = #{memberNickName}
+          AND DELETED_AT = 'N'
+    </select>
+
+    <insert id="insertSocialMember">
+        INSERT INTO T_SOCIAL
+            (
+                MEMBER_NO
+              , SOCIAL_SE
+              , SOCIAL_UNIQUE_KEY
+            ) VALUES (
+                #{memberNo}
+              , #{socialSe}
+              , #{socialUniqueKey}
+            )
+    </insert>
+
+    <select id="selectDupEmail" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MEMBER
+        WHERE MEMBER_EMAIL = #{memberEmail}
+          AND DELETED_AT = 'N'
+    </select>
+
+    <select id="selectEmail" resultType="string">
+        SELECT
+            B.MEMBER_EMAIL
+        FROM T_AUTH_CODE A, T_MEMBER B
+        WHERE A.MEMBER_CONTACT_NATION = B.MEMBER_HP_NATION
+          AND A.PHONE_NO = B.MEMBER_HP
+          AND B.DELETED_AT = 'N'
+          AND A.TOKEN_VALUE = #{token}
+          AND TIMESTAMPDIFF(MINUTE, A.CREATED_AT, NOW()) <![CDATA[<]]> 5
+          AND A.AUTH_YN = 'Y'
+    </select>
+
+    <update id="updatePassword">
+        UPDATE T_MEMBER B
+            JOIN T_AUTH_CODE A ON A.MEMBER_CONTACT_NATION = B.MEMBER_HP_NATION
+            AND A.PHONE_NO = B.MEMBER_HP
+            AND A.TOKEN_VALUE = #{token}
+            AND TIMESTAMPDIFF(MINUTE, A.CREATED_AT, NOW()) <![CDATA[<]]> 5
+        SET B.MEMBER_PASSWORD = #{password}
+        WHERE B.DELETED_AT = 'N'
+          AND A.AUTH_YN = 'Y'
+    </update>
+
+    <insert id="insertProfileMember">
+        INSERT INTO T_MEMBER_PROFILE ( MEMBER_NO, MEMBER_SE, MEMBER_NICK_NAME ) VALUES ( #{memberNo}, #{memberSe}, #{memberNickName})
+    </insert>
+
+    <insert id="insertSwMember">
+        INSERT INTO T_MEMBER_SW ( MEMBER_NO ) VALUES ( #{memberNo})
+    </insert>
+
+    <insert id="insertAlarmSetting">
+            INSERT INTO T_ALARM_SETTING (ALARM_CODE_NO, MEMBER_NO)
+            SELECT ALARM_CODE_NO, #{memberNo}
+            FROM T_ALARM_CODE
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'A'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'B'
+        </if>
+    </insert>
+
+    <insert id="insertAlarmSettingNew">
+        INSERT INTO T_ALARM_SETTING (ALARM_CODE_NO, MEMBER_NO)
+        SELECT ALARM_CODE_NO, #{memberNo}
+        FROM T_ALARM_CODE_NEW
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'A'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'B'
+        </if>
+    </insert>
+</mapper>

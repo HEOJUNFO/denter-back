@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.FrontMainMapper">
+
+    <select id="selectBanner" resultType="com.dentner.core.cmmn.vo.BannerVo">
+        SELECT
+            A.BANNER_NO, A.BANNER_TITLE, A.BANNER_DESC, A.BANNER_URL, A.BANNER_ORDR, A.SHOW_AT, A.REGISTER_DT, A.BANNER_SE,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'E' AND FILE_FROM_NO = A.BANNER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS BANNER_IMAGE
+        FROM T_BANNER A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND NOW() BETWEEN A.BANNER_START_DT AND A.BANNER_END_DT
+        ORDER BY A.BANNER_ORDR
+    </select>
+
+    <select id="selectStat" resultType="com.dentner.core.cmmn.vo.StatVo">
+        SELECT
+            (SELECT COUNT(*) FROM T_MEMBER WHERE DELETED_AT ='N') AS MEMBER_CNT,
+            (SELECT COUNT(*) FROM T_REQUEST_FORM  WHERE DELETED_AT ='N') AS REQUEST_CNT,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE WHERE MILEAGE_SE ='B' AND MILEAGE_UNIT ='A') AS AMOUNT_WON_CNT,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE WHERE MILEAGE_SE ='B' AND MILEAGE_UNIT ='B')  AS AMOUNT_POINT_CNT
+    </select>
+
+    <select id="selectBbs" resultType="com.dentner.core.cmmn.vo.BbsVo">
+        SELECT
+            A.BBS_NO, A.BBS_SJ, A.BBS_CN, A.BBS_SE, A.BBS_TP
+        FROM T_BBS A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.BBS_SE = 'B'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bbsTp)">
+            AND A.BBS_TP = #{bbsTp}
+        </if>
+    </select>
+
+</mapper>

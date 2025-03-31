@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminBannerMapper">
+    <select id="selectBannerList" resultType="com.dentner.core.cmmn.vo.BannerVo">
+        SELECT
+            A.BANNER_NO, A.BANNER_TITLE, A.BANNER_DESC, A.BANNER_URL, A.BANNER_ORDR, A.REGISTER_DT,
+            B.FILE_URL AS BANNER_IMAGE, B.FILE_REAL_NAME AS BANNER_FILE_NAME,
+            A.BANNER_START_DT, A.BANNER_END_DT, A.BANNER_SE
+        FROM T_BANNER A
+        LEFT JOIN (
+            SELECT
+                T1.FILE_FROM_NO,
+                T1.FILE_URL,
+                T1.FILE_REAL_NAME
+            FROM T_FILE T1
+            INNER JOIN (
+                SELECT FILE_FROM_NO, MAX(REGISTER_DT) AS MAX_REGISTER_DT
+                FROM T_FILE
+                WHERE DELETED_AT = 'N' AND FILE_SE = 'E'
+                GROUP BY FILE_FROM_NO
+            ) T2
+            ON T1.FILE_FROM_NO = T2.FILE_FROM_NO AND T1.REGISTER_DT = T2.MAX_REGISTER_DT
+            WHERE T1.DELETED_AT = 'N'
+        ) B ON A.BANNER_NO = B.FILE_FROM_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.BANNER_SE = #{bannerSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerLine)">
+        	AND A.BANNER_LINE = #{bannerLine}
+        </if>
+        
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+                (A.BANNER_DESC LIKE CONCAT('%', #{searchKeyword}, '%')
+                    OR A.BANNER_URL LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.BANNER_ORDR DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectBannerListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_BANNER A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.BANNER_SE = #{bannerSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (A.BANNER_DESC LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR A.BANNER_URL LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectBannerDetail" resultType="com.dentner.core.cmmn.vo.BannerVo">
+        SELECT
+            A.BANNER_NO, A.BANNER_TITLE, A.BANNER_DESC, A.BANNER_URL, A.BANNER_ORDR, A.REGISTER_DT,
+            B.FILE_URL AS BANNER_IMAGE, B.FILE_REAL_NAME AS BANNER_FILE_NAME,
+            A.BANNER_START_DT, A.BANNER_END_DT, A.BANNER_SE, B.FILE_NO
+        FROM T_BANNER A
+        LEFT JOIN (
+            SELECT
+                T1.FILE_FROM_NO,
+                T1.FILE_URL,
+                T1.FILE_REAL_NAME,
+                T1.FILE_NO
+            FROM T_FILE T1
+                     INNER JOIN (
+                SELECT FILE_FROM_NO, MAX(REGISTER_DT) AS MAX_REGISTER_DT
+                FROM T_FILE
+                WHERE DELETED_AT = 'N' AND FILE_SE = 'E'
+                GROUP BY FILE_FROM_NO
+            ) T2
+            ON T1.FILE_FROM_NO = T2.FILE_FROM_NO AND T1.REGISTER_DT = T2.MAX_REGISTER_DT
+            WHERE T1.DELETED_AT = 'N'
+        ) B ON A.BANNER_NO = B.FILE_FROM_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.BANNER_NO = #{bannerNo}
+    </select>
+
+    <insert id="insertBanner" useGeneratedKeys="true" keyProperty="bannerNo">
+        INSERT INTO T_BANNER
+            (
+                  BANNER_SE
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerDesc)">
+                , BANNER_DESC
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerTitle)">
+                , BANNER_TITLE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerLine)">
+                , BANNER_LINE
+                </if>
+                , BANNER_START_DT
+                , BANNER_END_DT
+                , BANNER_URL
+                , BANNER_ORDR
+                , REGISTER_NO
+            ) VALUES (
+                  #{bannerSe}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerDesc)">
+                , #{bannerDesc}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerTitle)">
+                , #{bannerTitle}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerLine)">
+                , #{bannerLine}
+                </if>
+                , #{bannerStartDt}
+                , #{bannerEndDt}
+                , #{bannerUrl}
+                , (SELECT IFNULL(MAX(BANNER_ORDR),0)+1 FROM T_BANNER A WHERE DELETED_AT = 'N')
+                , #{registerNo}
+            )
+    </insert>
+
+    <update id="updateBanner">
+        UPDATE T_BANNER
+        SET
+              BANNER_URL = #{bannerUrl}
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerDesc)">
+            , BANNER_DESC = #{bannerDesc}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerTitle)">
+            , BANNER_TITLE = #{bannerTitle}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bannerLine)">
+            , BANNER_LINE = #{bannerLine}
+            </if>
+            , BANNER_START_DT = #{bannerStartDt}
+            , BANNER_END_DT = #{bannerEndDt}
+            , UPDATED_DT = NOW()
+        WHERE BANNER_NO = #{bannerNo}
+    </update>
+
+    <update id="deleteBanner">
+        UPDATE T_BANNER
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE BANNER_NO IN
+        <foreach item="item" index="index" collection="bannerNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="updateBannerOrdr">
+        UPDATE T_BANNER
+        SET
+            BANNER_ORDR = #{bannerOrdr}
+          , UPDATED_DT = NOW()
+        WHERE BANNER_NO = #{bannerNo}
+    </update>
+
+</mapper>

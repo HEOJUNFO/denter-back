@@ -1,0 +1,365 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.FrontDentalMapper">
+    <select id="selectDentalLaboratoryList" resultType="com.dentner.core.cmmn.vo.DentalVo">
+        WITH RandomizedMembers AS (
+            SELECT
+                A.MEMBER_NO,
+                CASE WHEN B.MEMBER_SE != 'B' THEN
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+                    ELSE
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'L' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+                END AS MEMBER_PROFILE_IMAGE,
+                A.MEMBER_DENTISTRY_NAME, B.ONE_INTRODUCTION,
+                FN_CODE_NM2(B.MEMBER_AREA_NO, 'NAME', #{language}) AS MEMBER_AREA_NAME,
+                FN_CODE_NM2(B.FIX_PROSTHETICS_NO , 'NAME', #{language}) AS FIX_PROSTHETICS_NAME,
+                FN_CODE_NM2(B.REMOVABLE_PROSTHETICS_NO , 'NAME', #{language}) AS REMOVABLE_PROSTHETICS_NAME,
+                FN_CODE_NM2(B.CORRECT_NO , 'NAME', #{language}) AS CORRECT_NAME,
+                FN_CODE_NM2(B.ALL_ON_NO , 'NAME', #{language}) AS ALL_ON_NAME,
+                (SELECT IF(COUNT(*) > 0, 'Y', 'N') FROM T_INTEREST WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'A' AND TARGET_NO = A.MEMBER_NO) AS INTEREST_YN,
+                ROW_NUMBER() OVER (ORDER BY RAND(#{randomSe})) AS RowNum
+            FROM T_MEMBER A
+            JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO AND B.MEMBER_SE = 'B' AND B.SHOW_AT = 'Y'
+            WHERE 1=1
+              AND A.DELETED_AT = 'N'
+              AND A.MEMBER_APPROVAL_SE = 'B'
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+                AND NOT EXISTS (
+                    SELECT 1 FROM T_BLOCK TB
+                    WHERE TB.BLOCK_SE = 'A'
+                      AND TB.MEMBER_NO = #{registerNo}
+                      AND TB.TARGET_NO = A.MEMBER_NO
+                )
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberAreaFilter)">
+                AND B.MEMBER_AREA_NO = #{memberAreaFilter}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fixProstheticsFilter)">
+                AND FIND_IN_SET(#{fixProstheticsFilter}, B.FIX_PROSTHETICS_NO) > 0
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(removableProstheticsFilter)">
+                AND FIND_IN_SET(#{removableProstheticsFilter}, B.REMOVABLE_PROSTHETICS_NO) > 0
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(correctFilter)">
+                AND FIND_IN_SET(#{correctFilter}, B.CORRECT_NO) > 0
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(allOnFilter)">
+                AND FIND_IN_SET(#{allOnFilter}, B.ALL_ON_NO) > 0
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(keyword)">
+                AND (A.MEMBER_DENTISTRY_NAME LIKE CONCAT('%', #{keyword}, '%')
+                OR B.ONE_INTRODUCTION LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(interestFilter)">
+                AND EXISTS (
+                SELECT 1
+                FROM T_INTEREST
+                WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'A' AND TARGET_NO = A.MEMBER_NO
+                )
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(latestFilter)">
+                ORDER BY A.REGISTER_DT DESC
+            </if>
+            )
+            SELECT * FROM RandomizedMembers
+            WHERE RowNum LIMIT #{startRow} , #{pageCnt}
+
+    </select>
+
+    <select id="selectDentalLaboratoryListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MEMBER A
+        JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO AND B.MEMBER_SE = 'B' AND B.SHOW_AT = 'Y'
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.MEMBER_APPROVAL_SE = 'B'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+            AND NOT EXISTS (
+            SELECT 1 FROM T_BLOCK TB
+            WHERE TB.BLOCK_SE = 'A'
+            AND TB.MEMBER_NO = #{registerNo}
+            AND TB.TARGET_NO = A.MEMBER_NO
+            )
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberAreaFilter)">
+            AND B.MEMBER_AREA_NO = #{memberAreaFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fixProstheticsFilter)">
+            AND FIND_IN_SET(#{fixProstheticsFilter}, B.FIX_PROSTHETICS_NO) > 0
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(removableProstheticsFilter)">
+            AND FIND_IN_SET(#{removableProstheticsFilter}, B.REMOVABLE_PROSTHETICS_NO) > 0
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(correctFilter)">
+            AND FIND_IN_SET(#{correctFilter}, B.CORRECT_NO) > 0
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(allOnFilter)">
+            AND FIND_IN_SET(#{allOnFilter}, B.ALL_ON_NO) > 0
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(keyword)">
+            AND
+            (A.MEMBER_DENTISTRY_NAME LIKE CONCAT('%', #{keyword}, '%')
+            OR B.ONE_INTRODUCTION LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(interestFilter)">
+            AND EXISTS (
+                SELECT 1
+                FROM T_INTEREST
+                WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'A' AND TARGET_NO = A.MEMBER_NO
+            )
+        </if>
+    </select>
+
+    <select id="selectDentalLaboratoryDetail" resultType="com.dentner.core.cmmn.vo.DentalVo">
+        SELECT DISTINCT
+            B.MEMBER_SE, A.MEMBER_NO, B.ABOUT_US, B.ESTABLISH_YEAR, A.MEMBER_ADDRESS, A.MEMBER_DETAIL_ADDRESS, 
+            CASE WHEN A.MEMBER_SE = 'B' THEN A.MEMBER_REPRESENTATIVE_NAME 
+            ELSE A.MEMBER_BUSINESS_NAME
+            END MEMBER_BUSINESS_NAME,
+            CASE WHEN B.MEMBER_SE != 'B' THEN
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+            ELSE
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'L' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+            END AS MEMBER_PROFILE_IMAGE,
+            A.MEMBER_DENTISTRY_NAME, B.ONE_INTRODUCTION, FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            FN_CODE_NM(B.MEMBER_AREA_NO, 'NAME') AS MEMBER_AREA_NAME,
+            FN_CODE_NM(B.FIX_PROSTHETICS_NO , 'NAME') AS FIX_PROSTHETICS_NAME,
+            FN_CODE_NM(B.REMOVABLE_PROSTHETICS_NO , 'NAME') AS REMOVABLE_PROSTHETICS_NAME,
+            FN_CODE_NM(B.CORRECT_NO , 'NAME') AS CORRECT_NAME,
+            FN_CODE_NM(B.EMPLOYEE_CNT , 'NAME') AS EMPLOYEE_CNT_NAME,
+            FN_CODE_NM(B.ALL_ON_NO , 'NAME') AS ALL_ON_NAME,
+            (SELECT IF(COUNT(*) > 0, 'Y', 'N') FROM T_INTEREST WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'A' AND TARGET_NO = A.MEMBER_NO) AS INTEREST_YN
+        FROM T_MEMBER A
+        JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO AND B.MEMBER_SE = 'B'
+        WHERE 1=1
+         AND A.DELETED_AT = 'N'
+         AND A.MEMBER_APPROVAL_SE = 'B'
+         AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <insert id="insertInterestDental">
+        INSERT INTO T_INTEREST
+            (
+                  INTEREST_SE
+                , TARGET_NO
+                , MEMBER_NO
+            ) VALUES (
+                  #{interestSe}
+                , #{targetNo}
+                , #{memberNo}
+            )
+    </insert>
+
+    <delete id="deleteInterestDental">
+        DELETE FROM T_INTEREST
+        WHERE TARGET_NO = #{targetNo}
+          AND MEMBER_NO = #{memberNo}
+          AND INTEREST_SE = #{interestSe}
+    </delete>
+
+    <insert id="insertBlockDental">
+        INSERT INTO T_BLOCK
+            (
+                  BLOCK_SE
+                , TARGET_NO
+                , MEMBER_NO
+            ) VALUES (
+                  #{blockSe}
+                , #{targetNo}
+                , #{memberNo}
+            )
+    </insert>
+
+    <insert id="insertReportDental">
+        INSERT INTO T_REPORT
+            (
+            REPORT_CODE_NO
+            , TARGET_NO
+            , MEMBER_NO
+            , REPORT_CN
+            , REPORT_TARGET_NO
+            , REPORT_TP
+            ) VALUES (
+            #{reportCodeNo}
+            , #{targetNo}
+            , #{memberNo}
+            , #{reportCn}
+            , #{reportTargetNo}
+            , #{reportTp}
+            )
+    </insert>
+
+    <select id="selectDentalDesignerList" resultType="com.dentner.core.cmmn.vo.DesignerVo">
+        WITH RandomizedMembers AS (
+            SELECT DISTINCT
+                A.MEMBER_NO,
+                CASE WHEN B.MEMBER_SE != 'B' THEN
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+                ELSE
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'L' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+                END AS MEMBER_PROFILE_IMAGE,
+                A.MEMBER_DENTISTRY_NAME, B.ONE_INTRODUCTION, B.MEMBER_NICK_NAME,
+                (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_CNT,
+                (SELECT SUM(REVIEW_RATE) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') / (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_AVG,
+                (SELECT IF(COUNT(*) > 0, 'Y', 'N') FROM T_INTEREST WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'B' AND TARGET_NO = A.MEMBER_NO) AS INTEREST_YN,
+                D.PROSTHETICS_NAME, D.MEMBER_FIRST_VALUES, C.SW_NO, C.SW_ETC,
+                (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, (SELECT SW_NO FROM T_MEMBER_SW WHERE MEMBER_NO = A.MEMBER_NO))) AS SW_NO_NAME,
+                ROW_NUMBER() OVER (ORDER BY RAND(#{randomSe})) AS RowNum, A.REGISTER_DT,
+                (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'A' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.MEMBER_NO) AS WON_PRICE
+            FROM T_MEMBER A
+            JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO AND B.MEMBER_SE = 'C' AND B.SHOW_AT = 'Y'
+            LEFT JOIN T_MEMBER_SW C ON A.MEMBER_NO = C.MEMBER_NO
+            LEFT JOIN (
+                SELECT MEMBER_NO,
+                GROUP_CONCAT(DISTINCT FN_TEETH_NM(MEMBER_FIRST_VALUE)) AS PROSTHETICS_NAME,
+                GROUP_CONCAT(DISTINCT MEMBER_FIRST_VALUE) AS MEMBER_FIRST_VALUES
+                FROM T_MEMBER_TYPE
+                GROUP BY MEMBER_NO
+            ) D ON A.MEMBER_NO = D.MEMBER_NO
+            WHERE 1=1
+              AND A.DELETED_AT = 'N'
+              AND A.MEMBER_APPROVAL_SE = 'B'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+            AND NOT EXISTS (
+            SELECT 1 FROM T_BLOCK TB
+            WHERE TB.BLOCK_SE = 'B'
+            AND TB.MEMBER_NO = #{registerNo}
+            AND TB.TARGET_NO = A.MEMBER_NO
+            )
+        </if>
+        <if test="prostheticsFilterList != null and prostheticsFilterList.size() > 0">
+            AND (
+            <foreach collection="prostheticsFilterList" item="value" separator=" OR ">
+                FIND_IN_SET(#{value}, D.MEMBER_FIRST_VALUES) > 0
+            </foreach>
+            )
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(keyword)">
+            AND
+            (B.ONE_INTRODUCTION LIKE CONCAT('%', #{keyword}, '%')
+            OR B.MEMBER_NICK_NAME LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(interestFilter)">
+            AND EXISTS (
+            SELECT 1
+            FROM T_INTEREST
+            WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'B' AND TARGET_NO = A.MEMBER_NO
+            )
+        </if>
+        )
+        SELECT * FROM RandomizedMembers
+        <choose>
+            <when test="@com.dentner.core.util.MybatisUtils@isNotEmpty(latestFilter)">
+                ORDER BY REGISTER_DT DESC
+            </when>
+            <when test="@com.dentner.core.util.MybatisUtils@isNotEmpty(reviewFilter)">
+                ORDER BY REVIEW_CNT DESC
+            </when>
+            <when test="@com.dentner.core.util.MybatisUtils@isNotEmpty(ratingFilter)">
+                ORDER BY REVIEW_AVG DESC
+            </when>
+            <when test="@com.dentner.core.util.MybatisUtils@isNotEmpty(priceFilter)">
+                ORDER BY WON_PRICE DESC
+            </when>
+            <otherwise>
+                ORDER BY RowNum
+            </otherwise>
+        </choose>
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectDentalDesignerListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT FROM(
+            SELECT
+                A.MEMBER_NO,A.MEMBER_DENTISTRY_NAME, B.ONE_INTRODUCTION, B.MEMBER_NICK_NAME,D.MEMBER_FIRST_VALUES, A.REGISTER_DT,
+                (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'A' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.MEMBER_NO) AS WON_PRICE
+            FROM T_MEMBER A
+            JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO  = B.MEMBER_NO AND B.MEMBER_SE = 'C' AND B.SHOW_AT = 'Y'
+            LEFT JOIN T_MEMBER_SW C ON A.MEMBER_NO = C.MEMBER_NO
+            LEFT JOIN (
+                SELECT MEMBER_NO,
+                GROUP_CONCAT(DISTINCT FN_TEETH_NM(MEMBER_FIRST_VALUE)) AS PROSTHETICS_NAME,
+                GROUP_CONCAT(DISTINCT MEMBER_FIRST_VALUE) AS MEMBER_FIRST_VALUES
+                FROM T_MEMBER_TYPE GROUP BY MEMBER_NO) D ON A.MEMBER_NO = D.MEMBER_NO
+            WHERE 1=1
+                AND A.DELETED_AT = 'N'
+                AND A.MEMBER_APPROVAL_SE = 'B'
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+                AND NOT EXISTS (
+                SELECT 1 FROM T_BLOCK TB
+                WHERE TB.BLOCK_SE = 'B'
+                AND TB.MEMBER_NO = #{registerNo}
+                AND TB.TARGET_NO = A.MEMBER_NO
+                )
+            </if>
+            <if test="prostheticsFilterList != null and prostheticsFilterList.size() > 0">
+                AND (
+                <foreach collection="prostheticsFilterList" item="value" separator=" OR ">
+                    FIND_IN_SET(#{value}, D.MEMBER_FIRST_VALUES) > 0
+                </foreach>
+                )
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(keyword)">
+                AND
+                (B.ONE_INTRODUCTION LIKE CONCAT('%', #{keyword}, '%')
+                OR B.MEMBER_NICK_NAME LIKE CONCAT('%', #{keyword}, '%'))
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(interestFilter)">
+                AND EXISTS (
+                SELECT 1
+                FROM T_INTEREST
+                WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'B' AND TARGET_NO = A.MEMBER_NO
+                )
+            </if>
+        ) TB
+    </select>
+
+    <select id="selectDentalDesignerDetail" resultType="com.dentner.core.cmmn.vo.DesignerVo">
+        SELECT DISTINCT
+            A.MEMBER_NO, B.MEMBER_NICK_NAME, B.MEMBER_SE,
+            CASE WHEN B.MEMBER_SE != 'B' THEN
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+            ELSE
+                (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'L' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1)
+            END AS MEMBER_PROFILE_IMAGE,
+            A.MEMBER_DENTISTRY_NAME, B.ONE_INTRODUCTION, B.MODIFY_CNT, B.MODIFY_WARRANTY_DAY AS MODIFY_DAY,
+            (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_CNT,
+            (SELECT SUM(REVIEW_RATE) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') / (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_AVG,
+            (SELECT IF(COUNT(*) > 0, 'Y', 'N') FROM T_INTEREST WHERE MEMBER_NO = #{registerNo} AND INTEREST_SE = 'B' AND TARGET_NO = A.MEMBER_NO) AS INTEREST_YN,
+            C.SW_NO, C.SW_ETC, B.NOTE, D.PROSTHETICS_NAME,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'A' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.MEMBER_NO) AS WON_PRICE,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'B' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.MEMBER_NO) AS DOLLAR_PRICE,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, (SELECT SW_NO FROM T_MEMBER_SW WHERE MEMBER_NO = A.MEMBER_NO))) AS SW_NO_NAME
+        FROM T_MEMBER A
+        JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO  = B.MEMBER_NO AND B.MEMBER_SE = 'C'
+        LEFT JOIN T_MEMBER_SW C ON A.MEMBER_NO  = C.MEMBER_NO
+        LEFT JOIN (
+            SELECT MEMBER_NO,
+            GROUP_CONCAT(DISTINCT FN_TEETH_NM(MEMBER_FIRST_VALUE)) AS PROSTHETICS_NAME,
+            GROUP_CONCAT(DISTINCT MEMBER_FIRST_VALUE) AS MEMBER_FIRST_VALUES
+            FROM T_MEMBER_TYPE GROUP BY MEMBER_NO) D ON A.MEMBER_NO = D.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.MEMBER_APPROVAL_SE = 'B'
+          AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <delete id="deleteBlockDental">
+        DELETE FROM T_BLOCK
+        WHERE TARGET_NO = #{targetNo}
+          AND MEMBER_NO = #{memberNo}
+          AND BLOCK_SE = #{blockSe}
+    </delete>
+
+    <select id="selectBlockDental" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_BLOCK
+        WHERE TARGET_NO = #{targetNo}
+          AND MEMBER_NO = #{memberNo}
+          AND BLOCK_SE = #{blockSe}
+    </select>
+
+</mapper>

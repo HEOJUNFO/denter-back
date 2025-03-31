@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.CommonMapper">
+    <select id="selectCodeList" resultType="com.dentner.core.cmmn.vo.CodeVo">
+        SELECT
+            CODE_NO, CODE_DESC, CODE_PARENT_NO, CODE_EDIT_YN,
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(type)">
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+                CODE_NAME
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+                CODE_ENG_NAME AS CODE_NAME
+            </if>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(type)">
+            CODE_NAME
+        </if>
+        FROM T_CODE
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(parentNo)">
+            AND CODE_PARENT_NO = #{parentNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(parentNo)">
+            AND CODE_PARENT_NO = 0
+        </if>
+        AND DELETED_AT = 'N'
+        ORDER BY CODE_ORDR
+    </select>
+
+    <select id="selectUserPhone" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM
+            T_MEMBER
+        WHERE
+            1=1
+          AND MEMBER_HP = #{phone} AND MEMBER_HP_NATION = #{memberContactNation}
+          <if test="@com.dentner.core.util.MybatisUtils@equals('B',certification)">
+              AND MEMBER_EMAIL = #{email}
+          </if>
+          AND MEMBER_TP = #{memberTp}
+          AND DELETED_AT = 'N'
+    </select>
+
+    <insert id="insertAuthCode">
+        INSERT INTO T_AUTH_CODE
+        (
+          AUTH_CODE
+        , TOKEN_VALUE
+        , MEMBER_CONTACT_NATION
+        , PHONE_NO
+        ) VALUES (
+                   #{authCode}
+                 , #{tokenValue}
+                 , #{memberContactNation}
+                 , #{phoneNo}
+                 )
+    </insert>
+
+    <select id="selectAuthPhone" resultType="com.dentner.core.cmmn.vo.PhoneVo">
+        SELECT
+            PHONE_NO AS PHONE, MEMBER_CONTACT_NATION
+        FROM
+            T_AUTH_CODE
+        WHERE
+            AUTH_CODE = #{authCode}
+          AND TOKEN_VALUE = #{token}
+          AND TIMESTAMPDIFF(MINUTE, CREATED_AT, NOW()) <![CDATA[<]]> 5
+    </select>
+
+    <select id="selectNationCode" resultType="string">
+        SELECT
+            REPLACE(CODE_NAME, '+', '') AS CODE_NAME
+        FROM
+            T_CODE
+        WHERE
+            CODE_NO = #{codeNo}
+        AND DELETED_AT = 'N'
+    </select>
+
+    <update id="updateAuthPhone">
+        UPDATE T_AUTH_CODE
+        SET AUTH_YN = 'Y'
+        WHERE AUTH_CODE = #{authCode}
+        AND TOKEN_VALUE = #{token}
+    </update>
+
+    <select id="selectTeethType" resultType="com.dentner.core.cmmn.vo.TeethTypeVo">
+        SELECT
+            TEETH_TYPE_NO, PARENT_TYPE_NO, TEETH_SE, CALC_METHOD, TYPE_EDIT_YN, BASE_CNT,
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(type)">
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+                TYPE_NAME
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+                TYPE_ENG_NAME AS TYPE_NAME
+            </if>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(type)">
+            TYPE_NAME
+        </if>
+        FROM T_TEETH_TYPE
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(parentNo)">
+            AND PARENT_TYPE_NO = #{parentNo}
+        </if>
+        AND DELETED_AT = 'N'
+        ORDER BY TEETH_TYPE_NO ASC
+    </select>
+
+    <select id="selectAlarmCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_ALARM
+        WHERE DELETED_AT = 'N'
+          AND READ_AT = 'N'
+          AND MEMBER_NO = #{memberNo}
+    </select>
+
+    <select id="selectAlarmList" resultType="com.dentner.core.cmmn.vo.AlarmVo">
+        SELECT
+            A.ALARM_NO, A.ALARM_SJ, A.ALARM_CN, A.ALARM_SE, A.ALARM_URL, A.READ_AT, A.MEMBER_NO,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT
+        FROM T_ALARM A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(alarmSe)">
+            AND A.ALARM_SE = #{alarmSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(readAt)">
+            AND A.READ_AT = 'N'
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectAlarmListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_ALARM A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(alarmSe)">
+            AND A.ALARM_SE = #{alarmSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(readAt)">
+            AND A.READ_AT = 'N'
+        </if>
+    </select>
+
+    <update id="updateAlarmRead">
+        UPDATE T_ALARM
+        SET READ_AT = 'Y'
+        WHERE MEMBER_NO = #{memberNo}
+         AND ALARM_NO = #{alarmNo}
+    </update>
+
+    <update id="updateAlarmReadAll">
+        UPDATE T_ALARM
+        SET READ_AT = 'Y'
+        WHERE MEMBER_NO = #{memberNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(type)">            
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+                AND ALARM_SE = 'C'
+            </if>
+        </if>
+    </update>
+
+    <insert id="insertAlarm">
+        INSERT INTO T_ALARM
+            (
+                  ALARM_SJ
+                , ALARM_CN
+                , ALARM_SE
+                , ALARM_URL
+                , MEMBER_NO
+            ) VALUES (
+                  #{alarmSj}
+                , #{alarmCn}
+                , #{alarmSe}
+                , #{alarmUrl}
+                , #{memberNo}
+            )
+    </insert>
+
+    <insert id="insertAllAlarm">
+        INSERT INTO T_ALARM (
+            ALARM_SJ,
+            ALARM_CN,
+            ALARM_SE,
+            ALARM_URL,
+            MEMBER_NO
+        )
+        SELECT
+            #{alarmSj} AS ALARM_SJ,
+            #{alarmCn} AS ALARM_CN,
+            #{alarmSe} AS ALARM_SE,
+            #{alarmUrl} AS ALARM_URL,
+            MEMBER_NO
+        FROM T_MEMBER
+        WHERE MEMBER_SE IN ('A', 'B', 'C')
+          AND DELETED_AT = 'N';
+    </insert>
+    
+    <select id="selectMemberFCMToken" resultType="String">
+    	SELECT DEVICE_TOKEN FROM T_DEVICE WHERE MEMBER_NO = #{memberNo} ORDER BY REGISTER_DT DESC
+    </select>
+    
+    <select id="selectAlarm" resultType="int">
+    	SELECT COUNT(*) FROM T_ALARM_SETTING WHERE MEMBER_NO = #{memberNo} AND ALARM_CODE_NO = #{alarmCodeNo}
+    </select>
+    
+    <select id="selectAlarmCheckList" resultType="int">
+    	SELECT COUNT(*) FROM T_ALARM_SETTING WHERE MEMBER_NO = #{memberNo} AND ALARM_CODE_NO IN 
+    	<foreach item="item" index="index" collection="alarmCodeList" open="(" separator="," close=")">
+		        #{item}
+		  </foreach>
+    </select>
+    
+    <select id="selectMileageAmount" resultType="String">
+    	SELECT  
+			CASE MILEAGE_UNIT 
+				WHEN 'A' 
+					THEN CONCAT(ABS(MILEAGE_AMOUNT), 'P(￦)')
+				ELSE 
+					CONCAT(ABS(MILEAGE_AMOUNT), 'P($)')
+			END AS AMOUNT
+		FROM 
+			T_MILEAGE 
+		WHERE 
+			REQUEST_FORM_NO = #{mileageNo}
+    </select>
+    
+    <select id="selectMileage" parameterType="com.dentner.core.cmmn.dto.MileageCalculateAddDto" resultType="String">
+    	SELECT MILEAGE_CN FROM T_MILEAGE WHERE MILEAGE_NO = #{mileageNo}
+    </select>
+
+    <select id="selectRequestInfo" resultType="com.dentner.core.cmmn.dto.AlarmTalkDto">
+        SELECT
+            A.REQUEST_FORM_SJ, B.MEMBER_HP AS REQUEST_HP, A.REQUEST_FORM_NO,
+            C.MEMBER_HP AS DESIGNER_HP, A.REQUEST_FORM_SE, B.MEMBER_TP,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'A') AS REQUEST_NICK_NAME,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.MEMBER_NO AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
+            A.REGISTER_NO, A.REQUEST_DESIGNER_NO AS DESIGNER_NO,
+            (SELECT  
+			CASE MILEAGE_UNIT 
+			WHEN 'A' THEN CONCAT(ABS(SUM(MILEAGE_AMOUNT)), 'P(￦)')
+			ELSE CONCAT(ABS(SUM(MILEAGE_AMOUNT)), 'P($)')
+			END AS AMOUNT
+			FROM T_MILEAGE WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO) AS AMOUNT, B.MEMBER_EMAIL AS REQUEST_EMAIL
+        FROM T_REQUEST_FORM A
+        LEFT JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO AND B.DELETED_AT = 'N'
+        LEFT JOIN T_MEMBER C ON A.REQUEST_DESIGNER_NO = C.MEMBER_NO AND C.DELETED_AT = 'N'
+        WHERE A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <select id="selectEstimateInfo" resultType="com.dentner.core.cmmn.dto.AlarmTalkDto">
+        SELECT
+            A.REQUEST_FORM_SJ, B.MEMBER_HP AS REQUEST_HP, B.MEMBER_EMAIL AS REQUEST_EMAIL,
+            (SELECT MEMBER_HP FROM T_MEMBER WHERE MEMBER_NO = #{registerNo} AND DELETED_AT = 'N') AS DESIGNER_HP,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'A') AS REQUEST_NICK_NAME,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = #{registerNo} AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
+            A.REGISTER_NO, A.REQUEST_DESIGNER_NO AS DESIGNER_NO
+        FROM T_REQUEST_FORM A
+        LEFT JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO AND B.DELETED_AT = 'N'
+        WHERE A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <select id="selectMainStatData" resultType="com.dentner.core.cmmn.vo.MainStatVo">
+        SELECT
+            (SELECT COUNT(*) FROM T_MEMBER WHERE DELETED_AT = 'N') AS MEMBER_CNT,
+            (SELECT COUNT(*)+1060 FROM T_REQUEST_FORM WHERE DELETED_AT = 'N') AS REQUEST_CNT,
+            IFNULL((SELECT SUM(ABS(MILEAGE_AMOUNT)) FROM T_MILEAGE tm WHERE tm.MILEAGE_SE ='B' AND MILEAGE_UNIT = 'A' AND REQUEST_FORM_NO IN(SELECT REQUEST_FORM_NO FROM T_REQUEST_FORM WHERE DELETED_AT = 'N' AND REQUEST_STATUS = 'D')), 0) +17312349 AS WON_TOTAL_PRICE,
+            IFNULL((SELECT SUM(ABS(MILEAGE_AMOUNT)) FROM T_MILEAGE tm WHERE tm.MILEAGE_SE ='B' AND MILEAGE_UNIT = 'B' AND REQUEST_FORM_NO IN(SELECT REQUEST_FORM_NO FROM T_REQUEST_FORM WHERE DELETED_AT = 'N' AND REQUEST_STATUS = 'D')), 0) + 7645.25 AS DOLLAR_TOTAL_PRICE
+    </select>
+    
+    <select id="selectMemberNickName" resultType="String">
+    	SELECT FN_USER_NICKNM(#{value})  
+    </select>
+
+    <select id="selectMileageInfo" resultType="com.dentner.core.cmmn.dto.AlarmTalkDto">
+        SELECT
+            A.MEMBER_HP AS DESIGNER_HP,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = A.MEMBER_NO AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME
+        FROM T_MEMBER A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <select id="selectMemberTp" resultType="String">
+        SELECT MEMBER_TP FROM T_MEMBER WHERE MEMBER_NO = #{memberNo}
+    </select>
+</mapper>

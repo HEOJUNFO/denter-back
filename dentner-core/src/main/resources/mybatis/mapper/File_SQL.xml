@@ -1,0 +1,133 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.FileMapper">
+	<insert id="insertFile">
+		INSERT INTO T_FILE
+			(
+				  FILE_SE
+				, FILE_FROM_NO
+				, FILE_ORDR
+				, FILE_URL
+				, FILE_NAME
+				, FILE_REAL_NAME
+				, FILE_SIZE
+				, REGISTER_NO
+			) VALUES (
+				  #{fileSe}
+				, #{fileFromNo}
+				, (SELECT IFNULL(MAX(FILE_ORDR),0)+1 FROM T_FILE A WHERE FILE_SE = #{fileSe} AND FILE_FROM_NO = #{fileFromNo})
+				, #{fileUrl}
+				, #{fileName}
+				, #{fileRealName}
+				, #{fileSize}
+				, #{registerNo}
+			)
+	</insert>
+
+	<select id="selectFileList" resultType="com.dentner.core.cmmn.vo.S3FileVO">
+		SELECT
+			FILE_NO, FILE_SE, FILE_FROM_NO, FILE_ORDR, FILE_URL, FILE_NAME, FILE_REAL_NAME, FILE_SIZE
+		FROM T_FILE
+		WHERE DELETED_AT = 'N'
+		  AND FILE_SE = #{fileSe}
+		  AND FILE_FROM_NO = #{fileFromNo}
+		ORDER BY FILE_ORDR
+	</select>
+
+	<select id="selectFile" resultType="com.dentner.core.cmmn.vo.S3FileVO">
+		SELECT
+			FILE_NO, FILE_SE, FILE_FROM_NO, FILE_ORDR, FILE_URL, FILE_NAME, FILE_REAL_NAME, FILE_SIZE
+		FROM T_FILE
+		WHERE DELETED_AT = 'N'
+		  AND FILE_FROM_NO = #{fileFromNo}
+		  AND FILE_SE = #{fileSe}
+	</select>
+
+	<update id="deleteFile">
+		UPDATE T_FILE
+		SET
+			DELETED_AT = 'Y'
+		  , DELETED_DT = NOW()
+		WHERE FILE_SE = #{fileSe}
+		  AND FILE_FROM_NO = #{fileFromNo}
+	</update>
+
+	<update id="deleteFileArr">
+		UPDATE T_FILE
+		SET
+		      DELETED_AT = 'Y'
+			, DELETED_DT = NOW()
+		WHERE FILE_NO IN
+		<foreach item="item" index="index" collection="fileNoArr.split(',')" open="(" separator="," close=")">
+			#{item}
+		</foreach>
+	</update>
+
+	<select id="selectFileNo" resultType="com.dentner.core.cmmn.vo.S3FileVO">
+		SELECT
+			FILE_NO, FILE_SE, FILE_FROM_NO, FILE_ORDR, FILE_URL, FILE_NAME, FILE_REAL_NAME, FILE_SIZE
+		FROM T_FILE
+		WHERE DELETED_AT = 'N'
+		  AND FILE_NO = #{fileNo}
+	</select>
+
+	<select id="selectChatFile" resultType="com.dentner.core.cmmn.vo.S3FileVO">
+		SELECT
+			FILE_URL, FILE_SIZE, FILE_NAME, FILE_REAL_NAME
+		FROM T_CHAT
+		WHERE CHAT_NO = #{chatNo}
+	</select>
+
+	<insert id="insertFileOrdr">
+		INSERT INTO T_FILE
+		(
+		  FILE_SE
+		, FILE_FROM_NO
+		, FILE_ORDR
+		, FILE_URL
+		, FILE_NAME
+		, FILE_REAL_NAME
+		, FILE_SIZE
+		, REGISTER_NO
+		) VALUES (
+				   #{fileSe}
+				 , #{fileFromNo}
+				 , #{fileOrdr}
+				 , #{fileUrl}
+				 , #{fileName}
+				 , #{fileRealName}
+				 , #{fileSize}
+				 , #{registerNo}
+				 )
+	</insert>
+
+	<select id="selectFileLists" resultType="com.dentner.core.cmmn.vo.S3FileListVO">
+		SELECT
+			FILE_NO, FILE_SE, FILE_FROM_NO, FILE_ORDR, FILE_URL, FILE_NAME, FILE_REAL_NAME, FILE_SIZE
+		FROM T_FILE
+		WHERE DELETED_AT = 'N'
+		  AND FILE_SE = #{fileSe}
+		  AND FILE_FROM_NO = #{fileFromNo}
+		ORDER BY FILE_ORDR
+	</select>
+
+	<select id="selectFileCadList" resultType="com.dentner.core.cmmn.vo.S3FileListVO">
+		SELECT
+			FILE_NO, FILE_SE, FILE_FROM_NO, FILE_ORDR, FILE_URL, FILE_NAME, FILE_REAL_NAME, FILE_SIZE
+		FROM T_FILE
+		WHERE DELETED_AT = 'N'
+		  AND FILE_SE = #{fileSe}
+		  AND FILE_FROM_NO = #{fileFromNo}
+		  AND FILE_ORDR = #{fileOrdr}
+		ORDER BY FILE_ORDR
+	</select>
+
+	<select id="selectFileOrdr" resultType="int">
+		SELECT
+		    IFNULL(MAX(FILE_ORDR),0)+1
+		FROM T_FILE A
+		WHERE FILE_SE = #{fileSe} AND FILE_FROM_NO = #{fileFromNo}
+	</select>
+
+</mapper>

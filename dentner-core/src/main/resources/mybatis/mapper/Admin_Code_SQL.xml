@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminCodeMapper">
+    <select id="selectCodeList" resultType="com.dentner.core.cmmn.vo.CodeVo">
+        SELECT
+            CODE_NO, CODE_NAME, CODE_DESC, CODE_PARENT_NO, CODE_ORDR, CODE_EDIT_YN, REGISTER_DT
+        FROM T_CODE
+        WHERE 1=1
+        AND DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(codeParentNo)">
+            AND CODE_PARENT_NO IS NOT NULL
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(codeParentNo)">
+            AND CODE_PARENT_NO = 0
+        </if>
+        ORDER BY CODE_ORDR
+    </select>
+
+    <select id="selectCodeListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CODE
+        WHERE 1=1
+        AND DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(codeParentNo)">
+            AND CODE_PARENT_NO IS NOT NULL
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(codeParentNo)">
+            AND CODE_PARENT_NO = 0
+        </if>
+    </select>
+
+    <select id="selectCodeDetail" resultType="com.dentner.core.cmmn.vo.CodeVo">
+        SELECT
+            CODE_NO, CODE_NAME, CODE_DESC, CODE_PARENT_NO, CODE_ORDR, CODE_EDIT_YN, REGISTER_DT, DELETED_AT
+        FROM T_CODE A
+        WHERE 1=1
+          AND A.CODE_NO = #{codeNo}
+    </select>
+
+    <select id="selectCodeDetailList" resultType="com.dentner.core.cmmn.vo.CodeVo">
+        SELECT
+            CODE_NO, CODE_NAME, CODE_DESC, CODE_PARENT_NO, CODE_ORDR, CODE_EDIT_YN, REGISTER_DT, DELETED_AT
+        FROM T_CODE A
+        WHERE 1=1
+          AND A.CODE_PARENT_NO = #{codeNo}
+    </select>
+
+    <update id="deleteCode">
+        UPDATE T_CODE
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE CODE_NO = #{codeNo}
+    </update>
+
+    <insert id="insertCode">
+        INSERT INTO T_CODE
+        (
+              CODE_NAME
+            , CODE_DESC
+            , CODE_PARENT_NO
+            , CODE_EDIT_YN
+            , CODE_ORDR
+            , REGISTER_NO
+        ) VALUES (
+              #{codeName}
+            , #{codeDesc}
+            , #{codeParentNo}
+            , #{codeEditYn}
+            , (SELECT IFNULL(MAX(CODE_ORDR),0)+1 FROM T_CODE A WHERE DELETED_AT = 'N' AND CODE_PARENT_NO = #{codeParentNo})
+            , #{registerNo}
+        )
+    </insert>
+
+    <update id="updateCode">
+        UPDATE T_CODE
+        SET
+            CODE_NAME = #{codeName}
+          , CODE_DESC = #{codeDesc}
+          , CODE_PARENT_NO = #{codeParentNo}
+          , CODE_EDIT_YN = #{codeEditYn}
+          , UPDATED_AT = NOW()
+        WHERE CODE_NO = #{codeNo}
+    </update>
+
+    <update id="updateCodeDetail">
+        UPDATE T_CODE
+        SET
+              CODE_NAME = #{codeName}
+            , CODE_DESC = #{codeDesc}
+            , UPDATED_AT = NOW()
+        <if test="@com.dentner.core.util.MybatisUtils@equals('Y',deletedFg)">
+            , DELETED_AT = NOW()
+        </if>
+            , DELETED_FG = #{deletedFg}
+        WHERE CODE_NO = #{codeNo}
+    </update>
+
+    <insert id="insertCodeDetail">
+        INSERT INTO T_CODE
+        (
+              CODE_NAME
+            , CODE_PARENT_NO
+            , CODE_DESC
+            , CODE_TP
+            , CREATED_NO
+        ) VALUES (
+              #{codeName}
+            , #{codeParentNo}
+            , #{codeDesc}
+            , #{codeTp}
+            , #{createdNo}
+        )
+    </insert>
+</mapper>

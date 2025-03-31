@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminApplyMapper">
+    <select id="selectApplyList" resultType="com.dentner.core.cmmn.vo.ApplyVo">
+        SELECT
+            APPLY_NO, APPLY_ST, TEAM_NAME, ENTITY_STATUS, ESTABLISHED, HQ_LOCATION, CREATED_NO,
+            REPRESENTATIVE, INDUSTRY, BUSINESS_ITEM, WEBSITE, SOCIAL_MEDIA_LINK, PROMO_VIDEO_LINK,
+            CONVERT_TZ(CREATED_AT, 'UTC', 'Asia/Seoul') AS CREATED_AT,
+            FN_CODE_NM(ENTITY_STATUS, 'NAME') AS ENTITY_STATUS_NAME,
+            FN_CODE_NM(HQ_LOCATION, 'NAME') AS HQ_LOCATION_NAME,
+            FN_CODE_NM(INDUSTRY, 'NAME') AS INDUSTRY_NAME
+        FROM T_APPLY A
+        WHERE 1=1
+          AND A.DELETED_FG = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+                (TEAM_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+                    OR BUSINESS_ITEM LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.CREATED_AT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectApplyListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT
+            FROM (SELECT
+            APPLY_NO, APPLY_ST, TEAM_NAME, ENTITY_STATUS, ESTABLISHED, HQ_LOCATION, CREATED_NO
+            FROM T_APPLY A
+            WHERE 1=1
+            AND A.DELETED_FG = 'N'
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+                AND
+                (TEAM_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR BUSINESS_ITEM LIKE CONCAT('%', #{searchKeyword}, '%'))
+            </if>) TB
+    </select>
+
+    <select id="selectApplyDetail" resultType="com.dentner.core.cmmn.vo.ApplyVo">
+        SELECT
+            APPLY_NO, APPLY_ST, TEAM_NAME, ENTITY_STATUS, ESTABLISHED, HQ_LOCATION, CREATED_NO, SURVEY,
+            REPRESENTATIVE, INDUSTRY, BUSINESS_ITEM, WEBSITE, SOCIAL_MEDIA_LINK, PROMO_VIDEO_LINK,
+            CONVERT_TZ(CREATED_AT, 'UTC', 'Asia/Seoul') AS CREATED_AT,
+            FN_CODE_NM(ENTITY_STATUS, 'NAME') AS ENTITY_STATUS_NAME,
+            FN_CODE_NM(HQ_LOCATION, 'NAME') AS HQ_LOCATION_NAME,
+            FN_CODE_NM(SURVEY, 'NAME') AS SURVEY_NAME,
+            FN_CODE_NM(INDUSTRY, 'NAME') AS INDUSTRY_NAME
+        FROM T_APPLY A
+        WHERE 1=1
+          AND A.APPLY_NO = #{applyNo}
+          AND A.DELETED_FG = 'N'
+    </select>
+
+    <update id="updateApply">
+        UPDATE T_APPLY
+        SET
+            TEAM_NAME = #{teamName}
+          , ENTITY_STATUS = #{entityStatus}
+          , ESTABLISHED = #{established}
+          , HQ_LOCATION = #{hqLocation}
+          , REPRESENTATIVE = #{representative}
+          , INDUSTRY = #{industry}
+          , BUSINESS_ITEM = #{businessItem}
+          , WEBSITE = #{website}
+          , SOCIAL_MEDIA_LINK = #{socialMediaLink}
+          , PROMO_VIDEO_LINK = #{promoVideoLink}
+          , SURVEY = #{survey}
+          , UPDATED_AT = NOW()
+        WHERE
+            APPLY_NO = #{applyNo}
+    </update>
+
+    <update id="deleteApply">
+        UPDATE T_APPLY
+        SET
+            DELETED_FG = 'Y'
+          , DELETED_AT = NOW()
+        WHERE APPLY_NO = #{applyNo}
+    </update>
+
+    <select id="selectApplyExcelList" resultType="com.dentner.core.cmmn.vo.ApplyVo">
+        SELECT
+        APPLY_NO,
+            CASE WHEN APPLY_ST = 'A' THEN '지원완료'
+            WHEN APPLY_ST = 'B' THEN '심사중'
+            WHEN APPLY_ST = 'C' THEN '불합격'
+            ELSE '합격' END AS APPLY_ST_NAME
+        , TEAM_NAME, FN_CODE_NM(ENTITY_STATUS, 'NAME') AS ENTITY_STATUS_NAME, ESTABLISHED,
+        FN_CODE_NM(HQ_LOCATION, 'NAME') AS HQ_LOCATION_NAME,
+        REPRESENTATIVE, FN_CODE_NM(INDUSTRY, 'NAME') AS INDUSTRY_NAME, BUSINESS_ITEM, WEBSITE,
+        SOCIAL_MEDIA_LINK, PROMO_VIDEO_LINK,
+        FN_CODE_NM(SURVEY, 'NAME') AS SURVEY_NAME, CONVERT_TZ(CREATED_AT, 'UTC', 'Asia/Seoul') AS CREATED_AT, CREATED_NO,
+        (SELECT FILE_NAME FROM T_FILE WHERE FILE_TP = 'I' AND FILE_FROM_NO = A.APPLY_NO AND DELETED_FG = 'N') AS IR_FILE_NAME,
+        (SELECT FILE_NAME FROM T_FILE WHERE FILE_TP = 'F' AND FILE_FROM_NO = A.APPLY_NO AND DELETED_FG = 'N') AS FORM_FILE_NAME
+        FROM T_APPLY A
+        WHERE 1=1
+        AND A.DELETED_FG = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (TEAM_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR BUSINESS_ITEM LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.CREATED_AT DESC
+    </select>
+
+</mapper>

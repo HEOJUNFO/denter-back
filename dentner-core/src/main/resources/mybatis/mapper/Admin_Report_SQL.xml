@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminReportMapper">
+    <select id="selectReportList" resultType="com.dentner.core.cmmn.vo.AdminReportVo">
+        SELECT * FROM (
+            SELECT
+                A.REPORT_NO, B.MEMBER_EMAIL AS REPORTER_EMAIL, C.MEMBER_EMAIL AS TARGET_EMAIL,
+                CASE WHEN MB.MEMBER_NO IS NOT NULL THEN 'Y' ELSE 'N' END AS BLOCK_STATUS,
+                (SELECT MAX(MEMBER_NICK_NAME) FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS REPORTER_NICK_NAME,
+                B.MEMBER_NO AS REPORTER_NO, B.MEMBER_NAME AS REPORTER_NAME,
+                (SELECT MAX(MEMBER_NICK_NAME) FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS TARGET_NICK_NAME,
+                C.MEMBER_NO AS TARGET_NO, C.MEMBER_NAME AS TARGET_NAME,
+                COUNT(A.TARGET_NO) OVER (PARTITION BY A.TARGET_NO) AS TARGET_REPORT_COUNT,
+                A.REPORT_CN, A.REGISTER_DT
+            FROM T_REPORT A
+            LEFT JOIN T_MEMBER B ON A.MEMBER_NO = B.MEMBER_NO
+            LEFT JOIN T_MEMBER C ON A.TARGET_NO = C.MEMBER_NO
+            LEFT JOIN T_MEMBER_BLACK MB ON A.TARGET_NO = MB.MEMBER_NO
+            WHERE 1=1
+            AND A.DELETED_AT = 'N'
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+                AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            GROUP BY A.REPORT_NO, MB.MEMBER_NO, B.MEMBER_NO, B.MEMBER_NAME, C.MEMBER_NO, C.MEMBER_NAME, A.REPORT_CN, A.REGISTER_DT
+            ) AS TB
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (TARGET_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORTER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORTER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR TARGET_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR TARGET_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORTER_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND BLOCK_STATUS = #{statusFilter}
+        </if>
+        ORDER BY REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+
+    <select id="selectReportListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT
+        FROM (
+            SELECT
+                A.REPORT_NO, B.MEMBER_EMAIL AS REPORTER_EMAIL, C.MEMBER_EMAIL AS TARGET_EMAIL,
+                CASE WHEN MB.MEMBER_NO IS NOT NULL THEN 'Y' ELSE 'N' END AS BLOCK_STATUS,
+                (SELECT MAX(MEMBER_NICK_NAME) FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS REPORTER_NICK_NAME,
+                B.MEMBER_NO AS REPORTER_NO, B.MEMBER_NAME AS REPORTER_NAME,
+                (SELECT MAX(MEMBER_NICK_NAME) FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS TARGET_NICK_NAME,
+                C.MEMBER_NO AS TARGET_NO, C.MEMBER_NAME AS TARGET_NAME,
+                COUNT(A.TARGET_NO) OVER (PARTITION BY A.TARGET_NO) AS TARGET_REPORT_COUNT,
+                A.REPORT_CN, A.REGISTER_DT
+            FROM T_REPORT A
+            LEFT JOIN T_MEMBER B ON A.MEMBER_NO = B.MEMBER_NO
+            LEFT JOIN T_MEMBER C ON A.TARGET_NO = C.MEMBER_NO
+            LEFT JOIN T_MEMBER_BLACK MB ON A.TARGET_NO = MB.MEMBER_NO
+            WHERE 1=1
+            AND A.DELETED_AT = 'N'
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+                AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            GROUP BY A.REPORT_NO, MB.MEMBER_NO, B.MEMBER_NO, B.MEMBER_NAME, C.MEMBER_NO, C.MEMBER_NAME, A.REPORT_CN, A.REGISTER_DT
+            ) AS TB
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (TARGET_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORTER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORTER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORT_CN LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR TARGET_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR TARGET_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REPORTER_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND BLOCK_STATUS = #{statusFilter}
+        </if>
+    </select>
+
+    <select id="selectReportDetail" resultType="com.dentner.core.cmmn.vo.AdminReportVo">
+        SELECT
+            A.REPORT_NO, B.MEMBER_EMAIL AS REPORTER_EMAIL, C.MEMBER_EMAIL AS TARGET_EMAIL,
+            CASE WHEN MB.MEMBER_NO IS NOT NULL THEN 'Y' ELSE 'N' END AS BLOCK_STATUS,
+            (SELECT MAX(MEMBER_NICK_NAME) FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS REPORTER_NICK_NAME,
+            B.MEMBER_NO AS REPORTER_NO, B.MEMBER_NAME AS REPORTER_NAME,
+            (SELECT MAX(MEMBER_NICK_NAME) FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS TARGET_NICK_NAME,
+            C.MEMBER_NO AS TARGET_NO, C.MEMBER_NAME AS TARGET_NAME,
+            COUNT(A.TARGET_NO) OVER (PARTITION BY A.TARGET_NO) AS TARGET_REPORT_COUNT,
+                A.REPORT_CN, A.REGISTER_DT
+        FROM T_REPORT A
+                 LEFT JOIN T_MEMBER B ON A.MEMBER_NO = B.MEMBER_NO
+                 LEFT JOIN T_MEMBER C ON A.TARGET_NO = C.MEMBER_NO
+                 LEFT JOIN T_MEMBER_BLACK MB ON A.TARGET_NO = MB.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REPORT_NO = #{reportNo}
+    </select>
+    
+    <select id="selectReportBlockCheck">
+    	SELECT MEMBER_NO FROM T_MEMBER_BLACK WHERE MEMBER_NO IN 
+    	 <foreach item="item" index="index" collection="memberNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>  
+    </select>
+
+    <update id="insertReportBlock">
+        INSERT INTO T_MEMBER_BLACK
+            (
+                  MEMBER_NO
+                , REGISTER_NO
+            ) VALUES
+            <foreach item="item" index="index" collection="memberNoArr.split(',')" separator=",">
+            (
+                  #{item}
+                , #{registerNo}
+            )
+        </foreach>
+    </update>
+
+    <delete id="deleteReportBlock">
+        DELETE FROM T_MEMBER_BLACK
+        WHERE MEMBER_NO IN
+        <foreach item="item" index="index" collection="memberNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+</mapper>

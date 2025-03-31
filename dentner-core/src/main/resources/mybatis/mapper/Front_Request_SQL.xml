@@ -1,0 +1,1541 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.FrontRequestMapper">
+    <insert id="insertRequestOften">
+        INSERT INTO T_OFTEN
+                (
+                      OFTEN_CN
+                    , MEMBER_NO
+                ) VALUES (
+                      #{oftenCn}
+                    , #{memberNo}
+                )
+    </insert>
+
+    <select id="selectOftenList" resultType="com.dentner.core.cmmn.vo.OftenVo">
+        SELECT
+            OFTEN_NO, OFTEN_CN, MEMBER_NO, FN_GET_TIMEZONE_DATE(#{memberNo}, REGISTER_DT) AS REGISTER_DT
+        FROM T_OFTEN
+        WHERE 1=1
+            AND MEMBER_NO = #{memberNo}
+            AND DELETED_AT = 'N'
+        ORDER BY REGISTER_DT DESC
+    </select>
+
+    <update id="deleteRequestOften">
+        UPDATE T_OFTEN
+        SET
+              DELETED_AT = 'Y'
+            , DELETED_DT = NOW()
+        WHERE OFTEN_NO = #{oftenNo}
+        AND MEMBER_NO =  #{memberNo}
+    </update>
+
+    <insert id="insertRequestValue" useGeneratedKeys="true" keyProperty="valueNo">
+        INSERT INTO T_VALUE
+                (
+                    VALUE_CN
+                  , MEMBER_NO
+                ) VALUES (
+                    #{valueCn}
+                  , #{memberNo}
+                )
+    </insert>
+
+    <select id="selectValueList" resultType="com.dentner.core.cmmn.vo.ValueVo">
+        SELECT
+            A.VALUE_NO, A.VALUE_CN, A.MEMBER_NO, FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            B.CEMENT_GAP_VALUE, B.EXTRA_GAP_VALUE, B.OCCLUSAL_DISTANCE_VALUE, B.APPROXIMAL_DISTANCE_VALUE, B.HEIGHT_MINIMAL_VALUE
+        FROM T_VALUE A
+        JOIN T_VALUE_DATA B ON A.VALUE_NO = B.VALUE_NO
+        WHERE 1=1
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.DELETED_AT = 'N'
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <update id="deleteRequestValue">
+        UPDATE T_VALUE
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE VALUE_NO = #{valueNo}
+          AND MEMBER_NO =  #{memberNo}
+    </update>
+
+    <insert id="insertRequestDocGroup" useGeneratedKeys="true" keyProperty="requestDocGroupNo">
+        INSERT INTO T_REQUEST_DOC_GROUP
+            (
+                  REGISTER_NO
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestNumber)">
+                , REQUEST_NUMBER
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@equals('N',saveAt)">
+                , REQUEST_BAK_NUMBER
+                </if>
+                , REQUEST_SE
+                , SAVE_AT
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestJsonDc)">
+                , REQUEST_JSON_DC
+                </if>
+            ) VALUES (
+                  #{registerNo}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestNumber)">
+                , #{requestNumber}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@equals('N',saveAt)">
+                , #{requestBakNumber}
+                </if>
+                , #{requestSe}
+                , #{saveAt}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestJsonDc)">
+                , #{requestJsonDc}
+                </if>
+
+            )
+    </insert>
+
+    <insert id="insertRequestDoc" useGeneratedKeys="true" keyProperty="requestDocNo">
+        INSERT INTO T_REQUEST_DOC
+            (
+                  REQUEST_DOC_GROUP_NO
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessNo)">
+                , REQUEST_PROCESS_NO
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessEtcName)">
+                , REQUEST_PROCESS_ETC_NAME
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestDc)">
+                , REQUEST_DC
+                </if>
+                , REGISTER_NO
+                , REQUEST_UUID_KEY
+            ) VALUES (
+                  #{requestDocGroupNo}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessNo)">
+                , #{requestProcessNo}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessEtcName)">
+                , #{requestProcessEtcName}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestDc)">
+                , #{requestDc}
+                </if>
+                , #{registerNo}
+                , #{requestUuidKey}
+            )
+    </insert>
+
+    <insert id="insertRequestDocDetail" useGeneratedKeys="true" keyProperty="requestDocNo">
+        INSERT INTO T_REQUEST_DOC
+            (
+                REQUEST_DOC_GROUP_NO
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessNo)">
+                    , REQUEST_PROCESS_NO
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessEtcName)">
+                    , REQUEST_PROCESS_ETC_NAME
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestDc)">
+                    , REQUEST_DC
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestPonticSe)">
+                    , REQUEST_PONTIC_SE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(implantType)">
+                    , IMPLANT_TYPE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(valueSe)">
+                    , VALUE_SE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(valueSj)">
+                    , VALUE_SJ
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(cementGapValue)">
+                    , CEMENT_GAP_VALUE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(extraGapValue)">
+                    , EXTRA_GAP_VALUE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(occlusalDistanceValue)">
+                    , OCCLUSAL_DISTANCE_VALUE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(approximalDistanceValue)">
+                    , APPROXIMAL_DISTANCE_VALUE
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(heightMinimalValue)">
+                    , HEIGHT_MINIMAL_VALUE
+                </if>
+                , REGISTER_NO
+                , REQUEST_UUID_KEY
+            ) VALUES (
+                     #{requestDocGroupNo}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessNo)">
+                    , #{requestProcessNo}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessEtcName)">
+                    , #{requestProcessEtcName}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestDc)">
+                    , #{requestDc}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestPonticSe)">
+                    , #{requestPonticSe}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(implantType)">
+                    , #{implantType}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(valueSe)">
+                    , #{valueSe}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(valueSj)">
+                    , #{valueSj}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(cementGapValue)">
+                    , #{cementGapValue}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(extraGapValue)">
+                    , #{extraGapValue}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(occlusalDistanceValue)">
+                    , #{occlusalDistanceValue}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(approximalDistanceValue)">
+                    , #{approximalDistanceValue}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(heightMinimalValue)">
+                    , #{heightMinimalValue}
+                </if>
+                , #{registerNo}
+                , #{requestUuidKey}
+            )
+    </insert>
+
+    <insert id="insertRequestType">
+        INSERT INTO T_REQUEST_TYPE
+            (
+                  REQUEST_DOC_NO
+                , REQUEST_TYPE_VALUE
+                , REQUEST_TYPE_NAME
+                , REQUEST_MIDDLE_VALUE
+                , TYPE_COUNT
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(typeAddCount)">
+                , TYPE_ADD_COUNT
+        </if>
+                , REGISTER_NO
+            ) VALUES (
+                  #{requestDocNo}
+                , #{requestTypeValue}
+                , #{requestTypeName}
+                , #{requestMiddleValue}
+                , #{typeCount}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(typeAddCount)">
+                , #{typeAddCount}
+        </if>
+                , #{registerNo}
+            )
+    </insert>
+
+    <insert id="insertRequestTypeDetail" useGeneratedKeys="true" keyProperty="requestTypeNo">
+        INSERT INTO T_REQUEST_TYPE
+            (
+                  REQUEST_DOC_NO
+                , REQUEST_TYPE_VALUE
+                , REQUEST_TYPE_NAME
+                , REQUEST_MIDDLE_VALUE
+                , TYPE_COUNT
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(typeAddCount)">
+            , TYPE_ADD_COUNT
+        </if>
+                , REGISTER_NO
+            ) VALUES (
+                  #{requestDocNo}
+                , #{requestTypeValue}
+                , #{requestTypeName}
+                , #{requestMiddleValue}
+                , #{typeCount}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(typeAddCount)">
+            , #{typeAddCount}
+        </if>
+                , #{registerNo}
+            )
+    </insert>
+
+    <select id="selectRequestBakNumber">
+        SELECT
+            CONCAT(
+                    DATE_FORMAT(NOW(), '%Y%m%d'),
+                    LPAD((SELECT COUNT(*) + 1 FROM T_REQUEST_DOC_GROUP
+                             WHERE DATE_FORMAT(REGISTER_DT, '%Y%m%d') = DATE_FORMAT(NOW(), '%Y%m%d')),4, '0'),
+                    LPAD(#{registerNo}, 5, '0')
+            ) AS REQUEST_BAK_NUMBER
+    </select>
+
+    <select id="selectTempList" resultType="com.dentner.core.cmmn.vo.RequestBasketVo">
+        SELECT
+            A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            (SELECT
+                 CASE
+                     WHEN COUNT(*) = 0 THEN NULL
+                     WHEN COUNT(*) = 1 THEN
+                         CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+                     WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+                     WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+                     WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+                     WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+                     WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+                 END
+             FROM T_REQUEST_DOC
+             WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+               AND DELETED_AT = 'N') AS REQUEST_DOC_NAME,
+            GROUP_CONCAT(CONCAT_WS(' ', summary.TYPE_NAME, summary.type_count) SEPARATOR ' / ') AS REQUEST_DOC_DESC
+        FROM
+            T_REQUEST_DOC_GROUP A
+                LEFT JOIN (
+                SELECT
+                    RD.REQUEST_DOC_GROUP_NO,
+                    t1.TYPE_NAME,
+                    SUM(RT.TYPE_COUNT) as type_count
+                FROM
+                    T_REQUEST_DOC RD
+                    JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                    JOIN (
+                    SELECT DISTINCT
+                        SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                        RT.REQUEST_DOC_NO
+                    FROM
+                        T_REQUEST_TYPE RT
+                ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                    AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                    JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                    JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                    JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                    JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+            GROUP BY RD.REQUEST_DOC_GROUP_NO, t1.TYPE_NAME
+        ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.REGISTER_NO = #{memberNo}
+          AND A.REQUEST_SE = #{type}
+        GROUP BY A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO, A.REGISTER_DT
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectRequestBasketList" resultType="com.dentner.core.cmmn.vo.RequestBasketVo">
+        SELECT
+            A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, A.REGISTER_DT) AS REGISTER_DT,
+            (SELECT
+                CASE
+                    WHEN COUNT(*) = 0 THEN NULL
+                    WHEN COUNT(*) = 1 THEN
+                    CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+                    WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+                    WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+                    WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+                    WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+                    WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+                END
+            FROM T_REQUEST_DOC
+            WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+            AND DELETED_AT = 'N') AS REQUEST_DOC_NAME
+        FROM T_REQUEST_DOC_GROUP A
+        LEFT JOIN (
+            SELECT
+                RD.REQUEST_DOC_GROUP_NO,
+                t1.TYPE_NAME,
+                SUM(RT.TYPE_COUNT) as type_count
+            FROM T_REQUEST_DOC RD
+            JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+            JOIN (
+                SELECT DISTINCT
+                    SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                    RT.REQUEST_DOC_NO
+                FROM T_REQUEST_TYPE RT
+                ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+            GROUP BY RD.REQUEST_DOC_GROUP_NO, t1.TYPE_NAME
+        ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+        WHERE A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+            AND (
+                NOT EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_FORM TF
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF.DELETED_AT = 'N'
+                      AND TF.REQUEST_FORM_NO = (
+                        SELECT MAX(TF2.REQUEST_FORM_NO)
+                        FROM T_REQUEST_FORM TF2
+                        WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                          AND TF2.DELETED_AT = 'N'
+                        )
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_FORM TF
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF.DELETED_AT = 'N'
+                      AND TF.REQUEST_STATUS IN('E', 'G')
+                      AND TF.REQUEST_FORM_NO = (
+                        SELECT MAX(TF2.REQUEST_FORM_NO)
+                        FROM T_REQUEST_FORM TF2
+                        WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                          AND TF2.DELETED_AT = 'N'
+                        )
+                )
+            )
+            AND A.SAVE_AT = 'N'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+            AND EXISTS (
+                SELECT 1
+                FROM T_REQUEST_FORM TF
+                WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                  AND TF.DELETED_AT = 'N'
+                  AND TF.REQUEST_STATUS IN ('A', 'B', 'C', 'D', 'F')
+                  AND TF.REQUEST_FORM_NO = (
+                    SELECT MAX(TF2.REQUEST_FORM_NO)
+                    FROM T_REQUEST_FORM TF2
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF2.DELETED_AT = 'N'
+                )
+            )
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',type)">
+            AND A.SAVE_AT = 'Y'
+        </if>
+          AND A.REGISTER_NO = #{registerNo}
+        GROUP BY A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO, A.REGISTER_DT
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectRequestBasketListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REQUEST_DOC_GROUP A
+        WHERE A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+            AND (
+                NOT EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_FORM TF
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF.DELETED_AT = 'N'
+                      AND TF.REQUEST_FORM_NO = (
+                        SELECT MAX(TF2.REQUEST_FORM_NO)
+                        FROM T_REQUEST_FORM TF2
+                        WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                          AND TF2.DELETED_AT = 'N'
+                    )
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_FORM TF
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF.DELETED_AT = 'N'
+                      AND TF.REQUEST_STATUS IN('E', 'G')
+                      AND TF.REQUEST_FORM_NO = (
+                        SELECT MAX(TF2.REQUEST_FORM_NO)
+                        FROM T_REQUEST_FORM TF2
+                        WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                          AND TF2.DELETED_AT = 'N'
+                    )
+                )
+            )
+            AND A.SAVE_AT = 'N'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+            AND EXISTS (
+                SELECT 1
+                FROM T_REQUEST_FORM TF
+                WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                  AND TF.DELETED_AT = 'N'
+                  AND TF.REQUEST_STATUS IN ('A', 'B', 'C', 'D', 'F')
+                  AND TF.REQUEST_FORM_NO = (
+                    SELECT MAX(TF2.REQUEST_FORM_NO)
+                    FROM T_REQUEST_FORM TF2
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF2.DELETED_AT = 'N'
+                )
+            )
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',type)">
+            AND A.SAVE_AT = 'Y'
+        </if>
+          AND A.REGISTER_NO = #{registerNo}
+    </select>
+
+    <insert id="insertRequestForm" useGeneratedKeys="true" keyProperty="requestFormNo">
+        INSERT INTO T_REQUEST_FORM
+            (
+                  REQUEST_DOC_GROUPS_NO
+                , REQUEST_FORM_SJ
+                , REQUEST_FORM_SE
+                , REQUEST_FORM_TYPE
+                <if test="@com.dentner.core.util.MybatisUtils@equals('A',requestFormSe)">
+                , REQUEST_EXPIRE_DATE
+                , REQUEST_EXPIRE_TIME
+                </if>
+                , REQUEST_DEADLINE_DATE
+                , REQUEST_DEADLINE_TIME
+                , REQUEST_SW
+                , REQUEST_SW_NAME
+                , REQUEST_FORM_DC
+                , REQUEST_STATUS
+                <if test="@com.dentner.core.util.MybatisUtils@equals('B',requestFormSe)">
+                , REQUEST_DESIGNER_NO
+                , REQUEST_DEAL_STATUS
+                , DESIGNER_HISTORY_AT
+                </if>
+                , REQUEST_FORM_JSON
+                , REGISTER_NO
+            ) VALUES (
+                  #{requestDocGroupsNo}
+                , #{requestFormSj}
+                , #{requestFormSe}
+                , #{requestFormType}
+                <if test="@com.dentner.core.util.MybatisUtils@equals('A',requestFormSe)">
+                , FN_TIMEZONE_DATE(#{registerNo}, #{requestExpireDate}, #{requestExpireTime}) 
+                , FN_TIMEZONE_TIME(#{registerNo}, #{requestExpireDate}, #{requestExpireTime})
+                </if>
+                , FN_TIMEZONE_DATE(#{registerNo}, #{requestDeadlineDate}, #{requestDeadlineTime})
+                , FN_TIMEZONE_TIME(#{registerNo}, #{requestDeadlineDate}, #{requestDeadlineTime})
+                , #{requestSw}
+                , #{requestSwName}
+                , #{requestFormDc}
+                , #{requestStatus}
+                <if test="@com.dentner.core.util.MybatisUtils@equals('B',requestFormSe)">
+                , #{requestDesignerNo}
+                , #{requestDealStatus}
+                , 'Y'
+                </if>
+                , #{requestFormJson}
+                , #{registerNo}
+            )
+    </insert>
+
+    <select id="selectRequestDocList" resultType="com.dentner.core.cmmn.vo.RequestBasketVo">
+        /* selectRequestDocList */
+        SELECT
+            A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            (SELECT
+                CASE
+                    WHEN COUNT(*) = 0 THEN NULL
+                    WHEN COUNT(*) = 1 THEN
+                    CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+                    WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+                    WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+                    WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+                    WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+                    WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+                END
+            FROM T_REQUEST_DOC
+            WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+            AND DELETED_AT = 'N') AS REQUEST_DOC_NAME,
+            GROUP_CONCAT(CONCAT_WS(' ', summary.TYPE_NAME, summary.type_count) SEPARATOR ' / ') AS REQUEST_DOC_DESC
+        FROM T_REQUEST_DOC_GROUP A
+        LEFT JOIN (
+            SELECT RD.REQUEST_DOC_GROUP_NO, t1.TYPE_NAME, SUM(RT.TYPE_COUNT) as type_count
+            FROM T_REQUEST_DOC RD
+            JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+            JOIN (
+                SELECT DISTINCT
+                SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                RT.REQUEST_DOC_NO
+                FROM T_REQUEST_TYPE RT
+            ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+            AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+            JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+            JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+            JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+            JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+            GROUP BY RD.REQUEST_DOC_GROUP_NO, t1.TYPE_NAME
+            ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+        WHERE A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+            AND (
+                NOT EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_FORM TF
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF.DELETED_AT = 'N'
+                      AND TF.REQUEST_FORM_NO = (
+                        SELECT MAX(TF2.REQUEST_FORM_NO)
+                        FROM T_REQUEST_FORM TF2
+                        WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                          AND TF2.DELETED_AT = 'N'
+                        )
+                )
+                OR EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_FORM TF
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF.DELETED_AT = 'N'
+                      AND TF.REQUEST_STATUS IN('E', 'G')
+                      AND TF.REQUEST_FORM_NO = (
+                        SELECT MAX(TF2.REQUEST_FORM_NO)
+                        FROM T_REQUEST_FORM TF2
+                        WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                          AND TF2.DELETED_AT = 'N'
+                    )
+                )
+            )
+            AND A.SAVE_AT = 'N'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+            AND EXISTS (
+                SELECT 1
+                FROM T_REQUEST_FORM TF
+                WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF.REQUEST_DOC_GROUPS_NO) > 0
+                  AND TF.DELETED_AT = 'N'
+                  AND TF.REQUEST_STATUS IN ('A', 'B', 'C', 'D', 'F')
+                  AND TF.REQUEST_FORM_NO = (
+                    SELECT MAX(TF2.REQUEST_FORM_NO)
+                    FROM T_REQUEST_FORM TF2
+                    WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, TF2.REQUEST_DOC_GROUPS_NO) > 0
+                      AND TF2.DELETED_AT = 'N'
+                )
+            )
+        </if>
+        AND A.REGISTER_NO = #{memberNo}
+        GROUP BY A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO, A.REGISTER_DT
+        ORDER BY REGISTER_DT DESC
+    </select>
+
+    <select id="selectRequestDesingerList" resultType="com.dentner.core.cmmn.vo.TargetDesignerVo">
+        SELECT
+            B.MEMBER_NO,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'C') AS MEMBER_NICK_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE
+        FROM T_INTEREST A, T_MEMBER B
+        WHERE A.TARGET_NO = B.MEMBER_NO
+          AND A.INTEREST_SE ='B'
+          AND A.MEMBER_NO = #{memberNo}
+          AND NOT EXISTS (
+            SELECT 1
+            FROM T_BLOCK TB
+            WHERE TB.BLOCK_SE = 'C'
+              AND TB.TARGET_NO = #{memberNo}
+              AND TB.MEMBER_NO = B.MEMBER_NO
+            )
+        ORDER BY B.REGISTER_DT DESC
+    </select>
+
+    <select id="selectRequestFormList" resultType="com.dentner.core.cmmn.vo.RequestFormVo">
+        /* selectRequestFormList */
+        SELECT
+            FN_REQUEST_STATUS_NM(A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO) AS REQUEST_STATUS_NAME, A.REQUEST_DOC_GROUPS_NO,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, A.REGISTER_DT) AS REGISTER_DT,
+            (SELECT COUNT(*) FROM T_REQUEST_ESTIMATE WHERE A.REQUEST_FORM_NO = REQUEST_FORM_NO) AS REQUEST_DOC_CNT,
+            A.REQUEST_FORM_NO, A.REQUEST_FORM_SJ, A.REQUEST_FORM_SE,
+            A.REQUEST_EXPIRE_TIME, 
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%Y.%m.%d') AS REQUEST_EXPIRE_DATE,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%Y.%m.%d') AS REQUEST_DEADLINE_DATE, 
+            A.REQUEST_DEADLINE_TIME, 
+            A.REQUEST_SW, A.REQUEST_STATUS,
+            B.MEMBER_NO AS DESIGNER_NO,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = A.REGISTER_NO AND MEMBER_SE = 'A') AS MEMBER_NICK_NAME,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = A.REQUEST_DESIGNER_NO AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%H') AS REQUEST_EXPIRE_TIME_HOUR,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%i') AS REQUEST_EXPIRE_TIME_MIN,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%H') AS REQUEST_DEADLINE_TIME_HOUR,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%i') AS REQUEST_DEADLINE_TIME_MIN,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS DESIGNER_PROFILE_IMAGE,
+            A.REQUEST_SW_NAME AS MEMBER_SW_NAME, A.REGISTER_NO AS MEMBER_NO
+        FROM T_REQUEST_FORM A
+        LEFT JOIN T_MEMBER B ON A.REQUEST_DESIGNER_NO = B.MEMBER_NO
+        WHERE 1=1
+            AND A.DELETED_AT = 'N'
+            AND A.REQUEST_FORM_SE = #{requestFormSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(prostheticsFilter)">
+            AND FIND_IN_SET(#{prostheticsFilter}, A.REQUEST_FORM_TYPE) > 0
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',statusFilter)">
+                AND A.REQUEST_STATUS IN('A','B')
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('A',statusFilter)">
+                AND A.REQUEST_STATUS = #{statusFilter}
+            </if>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(statusFilter)">
+            AND A.REQUEST_STATUS IN('A','B','C', 'D', 'I')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(myFilter)">
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+                AND A.REGISTER_NO = #{registerNo}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',requestFormSe)">
+                <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe) ||
+                    @com.dentner.core.util.MybatisUtils@equals('B',memberSe)">
+                    AND EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_ESTIMATE E
+                    WHERE E.REQUEST_FORM_NO = A.REQUEST_FORM_NO
+                      AND E.REGISTER_NO = #{registerNo}
+                    )
+                </if>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',requestFormSe)">
+            	<if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe) ||
+                    @com.dentner.core.util.MybatisUtils@equals('B',memberSe)">
+                    AND A.DESIGNER_HISTORY_AT = 'N'
+                	AND A.REQUEST_DESIGNER_NO = #{registerNo}
+                </if>
+            </if>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(keyword)">
+            AND
+            (A.REQUEST_FORM_SJ LIKE CONCAT('%', #{keyword}, '%')
+            OR A.REQUEST_FORM_DC LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(latestFilter)">
+            ORDER BY A.REGISTER_DT DESC
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(oldFilter)">
+            ORDER BY A.REGISTER_DT ASC
+        </if>
+
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(dedLineFilter)">
+            ORDER BY
+            REQUEST_EXPIRE_DATE ASC,
+            CAST(SUBSTRING(REQUEST_EXPIRE_TIME, 1, 2) AS UNSIGNED) ASC,
+            CAST(SUBSTRING(REQUEST_EXPIRE_TIME, 3, 2) AS UNSIGNED) ASC
+        </if>
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectRequestFormListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REQUEST_FORM A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_SE = #{requestFormSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(prostheticsFilter)">
+            AND FIND_IN_SET(#{prostheticsFilter}, A.REQUEST_FORM_TYPE) > 0
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',statusFilter)">
+                AND A.REQUEST_STATUS IN('A','B')
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('A',statusFilter)">
+                AND A.REQUEST_STATUS = #{statusFilter}
+            </if>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(statusFilter)">
+            AND A.REQUEST_STATUS IN('A','B','C', 'D', 'I')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(myFilter)">
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+                AND A.REGISTER_NO = #{registerNo}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',requestFormSe)">
+                <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe) ||
+                    @com.dentner.core.util.MybatisUtils@equals('B',memberSe)">
+                    AND EXISTS (
+                    SELECT 1
+                    FROM T_REQUEST_ESTIMATE E
+                    WHERE E.REQUEST_FORM_NO = A.REQUEST_FORM_NO
+                    AND E.REGISTER_NO = #{registerNo}
+                    )
+                </if>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',requestFormSe)">
+                <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe) ||
+                    @com.dentner.core.util.MybatisUtils@equals('B',memberSe)">
+                    AND A.DESIGNER_HISTORY_AT = 'N'
+                	AND A.REQUEST_DESIGNER_NO = #{registerNo}
+                </if>
+            </if>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(keyword)">
+            AND
+            (A.REQUEST_FORM_SJ LIKE CONCAT('%', #{keyword}, '%')
+            OR A.REQUEST_FORM_DC LIKE CONCAT('%', #{keyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectRequestFormRequestList" resultType="map">
+        SELECT
+            A.REQUEST_DOC_GROUP_NO AS requestDocgroupNo,
+            (SELECT
+                 CASE
+                     WHEN COUNT(*) = 0 THEN NULL
+                     WHEN COUNT(*) = 1 THEN
+                     CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+                     WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+                     WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+                     WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+                     WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+                     WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+                     END
+             FROM T_REQUEST_DOC
+             WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+               AND DELETED_AT = 'N') AS requestDocName,
+            GROUP_CONCAT(
+                    CONCAT(summary.TYPE_NAME, ' ', summary.type_count)
+                        ORDER BY summary.TYPE_NAME
+        SEPARATOR ' , '
+            ) AS requestDocDesc
+        FROM
+            T_REQUEST_DOC_GROUP A
+                JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+                LEFT JOIN (
+                SELECT
+                    RD.REQUEST_DOC_GROUP_NO,
+                    COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                    SUM(RT.TYPE_COUNT) AS type_count
+                FROM
+                    T_REQUEST_DOC RD
+                        JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                        JOIN (
+                        SELECT DISTINCT
+                            SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                            RT.REQUEST_DOC_NO
+                        FROM
+                            T_REQUEST_TYPE RT
+                    ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                        AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                        LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                        LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                        LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                        LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+            ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+        WHERE A.DELETED_AT = 'N'
+          AND RF.REQUEST_FORM_NO = #{requestFormNo}
+        GROUP BY RF.REQUEST_FORM_NO, A.REQUEST_DOC_GROUP_NO
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectRequestFormDetail" resultType="com.dentner.core.cmmn.vo.RequestFormDetailVo">
+        SELECT
+            FN_REQUEST_STATUS_NM(A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO) AS REQUEST_STATUS_NAME, A.REQUEST_DOC_GROUPS_NO, A.REGISTER_NO, A.REQUEST_FORM_SE,
+            (SELECT COUNT(*) FROM T_REQUEST_ESTIMATE WHERE A.REQUEST_FORM_NO = REQUEST_FORM_NO) AS REQUEST_DOC_CNT,
+            A.REQUEST_FORM_NO, A.REQUEST_FORM_SJ, A.REQUEST_FORM_SE,
+            A.REQUEST_SW, A.REQUEST_STATUS,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = A.REGISTER_NO AND MEMBER_SE = 'A') AS MEMBER_NICK_NAME,
+            A.REQUEST_SW, A.REQUEST_FORM_TYPE, A.REQUEST_FORM_DC, A.REQUEST_DEAL_STATUS,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, D.SW_NO)) AS MEMBER_SW_NAME,
+            (SELECT GROUP_CONCAT(TYPE_NAME) FROM T_TEETH_TYPE WHERE  FIND_IN_SET(TEETH_TYPE_NO, A.REQUEST_FORM_TYPE)) AS REQUEST_FORM_TYPE_NAME,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%Y.%m.%d') AS REQUEST_EXPIRE_DATE,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%H%i') AS REQUEST_EXPIRE_TIME,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%Y.%m.%d') AS REQUEST_DEADLINE_DATE,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%H%i') AS REQUEST_DEADLINE_TIME,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%H') AS REQUEST_EXPIRE_TIME_HOUR,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%i') AS REQUEST_EXPIRE_TIME_MIN,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%H') AS REQUEST_DEADLINE_TIME_HOUR,
+            FN_TIMEZONE_DATE_FORMAT(#{memberNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%i') AS REQUEST_DEADLINE_TIME_MIN,
+            D.SW_ETC, A.REQUEST_DESIGNER_NO, C.MEMBER_NAME AS DESIGNER_NAME,
+            (SELECT IF(COUNT(*) >0,'Y','N') FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO AND ADD_PAY_SE = 'N' ORDER BY REGISTER_DT LIMIT 1) AS PAY_STATUS
+        FROM T_REQUEST_FORM A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER C ON A.REQUEST_DESIGNER_NO = C.MEMBER_NO
+        LEFT JOIN T_MEMBER_SW D ON B.MEMBER_NO  = D.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <select id="selectRequestDetailProstheticsList" resultType="map">
+        SELECT
+            F.BASE_CNT AS baseCnt,
+            A.REQUEST_TYPE_NAME AS requestTypeName,
+            SUM(A.TYPE_COUNT) AS count,
+            SUM(A.TYPE_ADD_COUNT) AS addCount,
+            CASE
+                WHEN E.MEMBER_TP = 'A' THEN IFNULL(D.TYPE_AMOUNT, 0)
+            ELSE IFNULL(D.TYPE_DOLLAR_AMOUNT, 0)
+                END AS amount,
+            CASE
+                WHEN E.MEMBER_TP = 'A' THEN IFNULL(D.TYPE_ADD_AMOUNT, 0)
+            ELSE IFNULL(D.TYPE_ADD_DOLLAR_AMOUNT, 0)
+                END AS addAmount,
+            CASE
+                WHEN E.MEMBER_TP = 'A' THEN
+                IFNULL(SUM(
+                    CASE
+                        WHEN A.TYPE_ADD_COUNT <![CDATA[<=]]> F.BASE_CNT THEN D.TYPE_AMOUNT
+                        ELSE D.TYPE_AMOUNT + ((A.TYPE_ADD_COUNT - F.BASE_CNT) * D.TYPE_ADD_AMOUNT)
+                    END
+                ), 0)
+                ELSE
+                IFNULL(SUM(
+                    CASE
+                        WHEN A.TYPE_ADD_COUNT <![CDATA[<=]]> F.BASE_CNT THEN D.TYPE_DOLLAR_AMOUNT
+                        ELSE D.TYPE_DOLLAR_AMOUNT + ((A.TYPE_ADD_COUNT - F.BASE_CNT) * D.TYPE_ADD_DOLLAR_AMOUNT)
+                    END
+                ), 0)
+            END AS totalAmount,
+            E.MEMBER_TP AS memberTp
+        FROM T_REQUEST_TYPE A
+        JOIN T_REQUEST_DOC RD ON A.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+        JOIN T_REQUEST_DOC_GROUP RDG ON RD.REQUEST_DOC_GROUP_NO = RDG.REQUEST_DOC_GROUP_NO
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(RDG.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        LEFT JOIN T_MEMBER_TYPE D ON A.REQUEST_MIDDLE_VALUE = D.MEMBER_MIDDLE_VALUE AND D.MEMBER_NO = RF.REQUEST_DESIGNER_NO
+        JOIN T_TEETH_TYPE F ON A.REQUEST_MIDDLE_VALUE = F.TEETH_TYPE_NO
+        JOIN T_MEMBER E ON A.REGISTER_NO = E.MEMBER_NO
+        WHERE RF.REQUEST_FORM_NO = #{requestFormNo}
+        GROUP BY A.REQUEST_TYPE_NAME, D.TYPE_AMOUNT, D.TYPE_ADD_AMOUNT, E.MEMBER_TP
+        ORDER BY A.REQUEST_TYPE_NO;
+    </select>
+
+    <select id="selectRequestDetailRequestList" resultType="com.dentner.core.cmmn.vo.RequestBasketVo">
+        SELECT
+            A.REQUEST_NUMBER, A.REQUEST_SE,
+            A.REQUEST_DOC_GROUP_NO,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            (SELECT
+                 CASE
+                     WHEN COUNT(*) = 0 THEN NULL
+                     WHEN COUNT(*) = 1 THEN
+                     CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+                     WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+                     WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+                     WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+                     WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+                     WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+                     END
+             FROM T_REQUEST_DOC
+             WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+               AND DELETED_AT = 'N') AS REQUEST_DOC_NAME,
+            GROUP_CONCAT(
+                    CONCAT(summary.TYPE_NAME, ' ', summary.type_count)
+                        ORDER BY summary.TYPE_NAME
+        SEPARATOR ' / '
+            ) AS REQUEST_DOC_DESC
+        FROM
+            T_REQUEST_DOC_GROUP A
+                JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+                LEFT JOIN (
+                SELECT
+                    RD.REQUEST_DOC_GROUP_NO,
+                    COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                    SUM(RT.TYPE_COUNT) AS type_count
+                FROM
+                    T_REQUEST_DOC RD
+                        JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                        JOIN (
+                        SELECT DISTINCT
+                            SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                            RT.REQUEST_DOC_NO
+                        FROM
+                            T_REQUEST_TYPE RT
+                    ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                        AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                        LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                        LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                        LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                        LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+            ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+        WHERE A.DELETED_AT = 'N'
+          AND RF.REQUEST_FORM_NO = #{requestFormNo}
+        GROUP BY A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO, A.REGISTER_DT, A.REQUEST_SE
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectRequestDetailReplyList" resultType="com.dentner.core.cmmn.vo.ReplyVo">
+        SELECT
+            REQUEST_FORM_ANSWER_NO, REQUEST_FORM_NO, ANSWER_CN, PARENT_ANSWER_NO, REGISTER_NO,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            FN_USER_NICKNM(A.REGISTER_NO) AS MEMBER_NICK_NAME
+        FROM T_REQUEST_FORM_ANSWER A
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+         AND A.DELETED_AT = 'N'
+    </select>
+
+    <insert id="insertReportRequestForm">
+        INSERT INTO T_REPORT
+                (
+                  REPORT_CODE_NO
+                , TARGET_NO
+                , MEMBER_NO
+                , REPORT_CN
+                , REPORT_TP
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(reportTargetNo)">
+                , REPORT_TARGET_NO
+            </if>
+                ) VALUES (
+                  #{reportCodeNo}
+                , #{targetNo}
+                , #{memberNo}
+                , #{reportCn}
+                , #{reportTp}
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(reportTargetNo)">
+                , #{reportTargetNo}
+            </if>
+                )
+    </insert>
+
+    <insert id="insertRequestFormReply">
+        INSERT INTO T_REQUEST_FORM_ANSWER
+                (
+                      REQUEST_FORM_NO
+                    , ANSWER_CN
+                    , PARENT_ANSWER_NO
+                    , REGISTER_NO
+                ) VALUES (
+                      #{requestFormNo}
+                    , #{answerCn}
+                    , #{parentAnswerNo}
+                    , #{registerNo}
+                )
+    </insert>
+
+    <update id="updateRequestFormReply">
+        UPDATE T_REQUEST_FORM_ANSWER
+        SET ANSWER_CN = #{answerCn}
+            , UPDATED_DT = NOW()
+            , UPDATED_NO = #{registerNo}
+        WHERE REQUEST_FORM_ANSWER_NO = #{requestFormAnswerNo}
+    </update>
+
+    <update id="deleteRequestFormReply">
+        UPDATE T_REQUEST_FORM_ANSWER
+        SET DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REQUEST_FORM_ANSWER_NO = #{requestFormAnswerNo}
+    </update>
+
+    <update id="deleteRequestForm">
+        UPDATE T_REQUEST_FORM
+        SET DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REQUEST_FORM_NO IN
+        <foreach item="item" index="index" collection="requestFormNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <select id="selectRequestFormTargetAmount" resultType="int">
+        SELECT
+            CASE
+                WHEN E.MEMBER_TP = 'A' THEN
+                IFNULL(SUM(
+                    CASE
+                        WHEN F.BASE_CNT IS NOT NULL THEN
+                        CASE
+                            WHEN C.TYPE_ADD_COUNT <![CDATA[<=]]> F.BASE_CNT THEN D.TYPE_AMOUNT
+                            ELSE D.TYPE_AMOUNT + ((C.TYPE_ADD_COUNT - F.BASE_CNT) * D.TYPE_ADD_AMOUNT)
+                        END
+                    ELSE C.TYPE_COUNT * D.TYPE_AMOUNT
+                    END
+                ), 0)
+            ELSE
+                IFNULL(SUM(
+                    CASE
+                        WHEN F.BASE_CNT IS NOT NULL THEN
+                        CASE
+                            WHEN C.TYPE_ADD_COUNT <![CDATA[<=]]> F.BASE_CNT THEN D.TYPE_DOLLAR_AMOUNT
+                            ELSE D.TYPE_DOLLAR_AMOUNT + ((C.TYPE_ADD_COUNT - F.BASE_CNT) * D.TYPE_ADD_DOLLAR_AMOUNT)
+                        END
+                    ELSE C.TYPE_COUNT * D.TYPE_DOLLAR_AMOUNT
+                    END
+                ), 0)
+            END AS AMOUNT
+        FROM T_REQUEST_DOC_GROUP A
+        JOIN T_REQUEST_DOC B ON A.REQUEST_DOC_GROUP_NO = B.REQUEST_DOC_GROUP_NO
+        JOIN T_REQUEST_TYPE C ON B.REQUEST_DOC_NO = C.REQUEST_DOC_NO
+        LEFT JOIN T_MEMBER_TYPE D ON C.REQUEST_MIDDLE_VALUE = D.MEMBER_MIDDLE_VALUE
+        LEFT JOIN T_TEETH_TYPE F ON C.REQUEST_MIDDLE_VALUE = F.TEETH_TYPE_NO
+        JOIN T_MEMBER E ON A.REGISTER_NO = E.MEMBER_NO
+        WHERE D.MEMBER_NO = #{targetNo}
+        AND (
+        <foreach collection="docList" item="value" separator=" OR ">
+            FIND_IN_SET(#{value}, A.REQUEST_DOC_GROUP_NO) > 0
+        </foreach>
+        )
+        AND A.DELETED_AT = 'N' AND B.DELETED_AT = 'N' AND C.DELETED_AT = 'N'
+        AND D.DELETED_AT = 'N' AND (F.DELETED_AT = 'N' OR F.TEETH_TYPE_NO IS NULL)
+    </select>
+
+    <insert id="insertRequestEstimate" useGeneratedKeys="true" keyProperty="requestEstimateNo">
+        INSERT INTO T_REQUEST_ESTIMATE
+                (
+                      REQUEST_FORM_NO
+                    , ESTIMATE_CN
+                    , ESTIMATE_AMOUNT
+                    , ESTIMATE_DATE
+                    , ESTIMATE_TIME
+                    , REGISTER_NO
+                ) VALUES (
+                      #{requestFormNo}
+                    , #{estimateCn}
+                    , #{estimateAmount}
+                    , #{estimateDate}
+                    , #{estimateTime}
+                    , #{registerNo}
+                )
+    </insert>
+
+    <insert id="insertRequestEstimateType">
+        INSERT INTO T_REQUEST_ESTIMATE_TYPE
+            (
+                  REQUEST_ESTIMATE_NO
+                , TYPE_NAME
+                , TYPE_AMOUNT
+                , TYPE_CNT
+                , TYPE_UNIT
+                , REGISTER_NO
+            ) VALUES (
+                  #{requestEstimateNo}
+                , #{typeName}
+                , #{typeAmount}
+                , #{typeCnt}
+                , #{typeUnit}
+                , #{registerNo}
+            )
+    </insert>
+
+    <update id="deleteRequestDoc">
+        UPDATE T_REQUEST_DOC
+        SET DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REQUEST_DOC_GROUP_NO IN
+        <foreach item="item" index="index" collection="requestDocGroupArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="deleteRequestDocGroup">
+        UPDATE T_REQUEST_DOC_GROUP
+        SET DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REQUEST_DOC_GROUP_NO IN
+        <foreach item="item" index="index" collection="requestDocGroupArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <select id="selectRequestEstimateProstheticsList" resultType="map">
+        /* FrontRequestMapper selectRequestEstimateProstheticsList*/
+        SELECT
+            A.REQUEST_TYPE_NAME AS requestTypeName, SUM(A.TYPE_COUNT) AS count,
+            CASE WHEN E.MEMBER_TP = 'A' THEN
+                IFNULL(D.TYPE_AMOUNT,0)
+            ELSE
+                IFNULL(D.TYPE_DOLLAR_AMOUNT,0)
+            END AS amount, E.MEMBER_TP AS memberTp
+        FROM T_REQUEST_TYPE A
+        JOIN T_REQUEST_DOC RD ON A.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+        JOIN T_REQUEST_DOC_GROUP RDG ON RD.REQUEST_DOC_GROUP_NO = RDG.REQUEST_DOC_GROUP_NO
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(RDG.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        LEFT JOIN T_MEMBER_TYPE D ON A.REQUEST_MIDDLE_VALUE = D.MEMBER_MIDDLE_VALUE AND D.MEMBER_NO = #{memberNo}
+        JOIN T_MEMBER E ON A.REGISTER_NO = E.MEMBER_NO
+        WHERE RF.REQUEST_FORM_NO = #{requestFormNo}
+        GROUP BY REQUEST_TYPE_NAME
+        ORDER BY REQUEST_TYPE_NO
+    </select>
+
+    <select id="selectRequestFormEstimateDetail" resultType="com.dentner.core.cmmn.vo.RequestEstimateDetailVo">
+        SELECT
+            A.REQUEST_FORM_SE, A.REQUEST_FORM_SJ, A.REQUEST_EXPIRE_DATE,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 1, 2) AS REQUEST_EXPIRE_TIME_HOUR,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 3, 2) AS REQUEST_EXPIRE_TIME_MIN,
+            A.REQUEST_SW, A.REQUEST_SW_NAME
+        FROM T_REQUEST_FORM A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER C ON A.REQUEST_DESIGNER_NO = C.MEMBER_NO
+        LEFT JOIN T_MEMBER_SW D ON B.MEMBER_NO  = D.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <select id="selectRequestFormEstimateDocDesc" resultType="string">
+    /* FrontRequestMapper selectRequestFormEstimateDocDesc */
+        SELECT
+            GROUP_CONCAT(CONCAT(TYPE_NAME, ' ', total_count) ORDER BY TYPE_NAME SEPARATOR ' / ' ) AS requestDocDesc
+        FROM (
+             SELECT
+                 summary.TYPE_NAME,
+                 SUM(summary.total_count) AS total_count
+             FROM
+                 T_REQUEST_DOC_GROUP A
+                     JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, RF.REQUEST_DOC_GROUPS_NO) > 0
+                     LEFT JOIN (
+                     SELECT
+                         RD.REQUEST_DOC_GROUP_NO,
+                         COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                         SUM(RT.TYPE_COUNT) AS total_count
+                     FROM
+                         T_REQUEST_DOC RD
+                             JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                             JOIN (
+                             SELECT DISTINCT
+                                 SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                                 RT.REQUEST_DOC_NO
+                             FROM
+                                 T_REQUEST_TYPE RT
+                         ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                             AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                             LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                             LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                             LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                             LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                     GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+                 ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+             WHERE
+                 A.DELETED_AT = 'N'
+               AND RF.REQUEST_FORM_NO = #{requestFormNo}
+             GROUP BY summary.TYPE_NAME
+         ) tb
+    </select>
+
+    <select id="selectRequestEstimateStatus" resultType="Integer">
+        SELECT
+            REQUEST_ESTIMATE_NO
+        FROM T_REQUEST_ESTIMATE
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND REGISTER_NO  = #{memberNo}
+    </select>
+
+    <update id="updateRequestForm">
+        UPDATE T_REQUEST_FORM
+        SET   REQUEST_DOC_GROUPS_NO =  #{requestDocGroupsNo}
+            , REQUEST_FORM_SJ = #{requestFormSj}
+            , REQUEST_FORM_TYPE = #{requestFormType}
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',requestFormSe)">
+            , REQUEST_EXPIRE_DATE = #{requestExpireDate}
+            , REQUEST_EXPIRE_TIME = #{requestExpireTime}
+            </if>
+            , REQUEST_DEADLINE_DATE = #{requestDeadlineDate}
+            , REQUEST_DEADLINE_TIME = #{requestDeadlineTime}
+            , REQUEST_SW = #{requestSw}
+            , REQUEST_SW_NAME = #{requestSwName}
+            , REQUEST_FORM_DC = #{requestFormDc}
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',requestFormSe)">
+            , REQUEST_DESIGNER_NO = #{requestDesignerNo}
+            </if>
+            , REQUEST_FORM_JSON = #{requestFormJson}
+            , UPDATED_NO = #{registerNo}
+            , UPDATED_DT = NOW()
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <select id="selectRequestBasketDocDesc" resultType="string">
+        /* FrontTransactionMapper selectRequestBasketDocDesc */
+        SELECT
+            GROUP_CONCAT(CONCAT(TYPE_NAME, ' ', total_count) ORDER BY TYPE_NAME SEPARATOR ' / ' ) AS requestDocDesc
+        FROM (
+                 SELECT
+                     summary.TYPE_NAME,
+                     SUM(summary.total_count) AS total_count
+                 FROM
+                     T_REQUEST_DOC_GROUP A
+                     LEFT JOIN (
+                     SELECT
+                         RD.REQUEST_DOC_GROUP_NO,
+                         COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                         SUM(RT.TYPE_COUNT) AS total_count
+                     FROM
+                         T_REQUEST_DOC RD
+                             JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                             JOIN (
+                             SELECT DISTINCT
+                                 SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                                 RT.REQUEST_DOC_NO
+                             FROM
+                                 T_REQUEST_TYPE RT
+                         ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                             AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                             LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                             LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                             LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                             LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                     GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+                 ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+             WHERE
+                 A.DELETED_AT = 'N'
+             AND A.REGISTER_NO = #{memberNo}
+             AND A.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+             GROUP BY summary.TYPE_NAME
+         ) tb
+    </select>
+
+    <insert id="insertRequestTargetFormRefuse">
+        INSERT INTO T_REQUEST_FORM_REFUSE
+            (
+                  REQUEST_FORM_NO
+                , REQUEST_REFUSE_CN
+                , REGISTER_NO
+            ) VALUES (
+               #{requestFormNo}
+             , #{requestRefuseCn}
+             , #{registerNo}
+             )
+    </insert>
+
+    <insert id="insertRequestTypeDental" >
+        INSERT INTO T_REQUEST_TYPE_DENTAL
+            (
+                  REQUEST_TYPE_NO
+                , REQUEST_TYPE_DENTAL_SE
+                , REQUEST_TYPE_DENTAL_VALUE
+                , REGISTER_NO
+                ) VALUES (
+                  #{requestTypeNo}
+                , #{requestDentalSe}
+                , #{requestDentalValue}
+                , #{registerNo}
+            )
+    </insert>
+
+    <select id="selectRequestJson" resultType="com.dentner.core.cmmn.vo.RequestJsonVo">
+        /* FrontTransactionMapper selectRequestJson */
+        SELECT
+            REQUEST_JSON_DC, REQUEST_DOC_GROUP_NO
+        FROM T_REQUEST_DOC_GROUP
+        WHERE REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+         AND DELETED_AT = 'N'
+         AND REGISTER_NO = #{memberNo}
+    </select>
+
+    <select id="selectRequestDocFileList" resultType="map">
+        /* selectRequestDocFileList */
+        SELECT
+            C.FILE_FROM_NO AS requestDocNo, C.FILE_URL AS fileUrl,
+            C.FILE_REAL_NAME AS fileRealName, C.FILE_SIZE AS fileSize,
+            C.FILE_NO AS fileNo
+        FROM T_REQUEST_DOC_GROUP A
+        JOIN T_REQUEST_DOC B ON A.REQUEST_DOC_GROUP_NO = B.REQUEST_DOC_GROUP_NO
+        /* LEFT JOIN T_FILE C ON A.REQUEST_DOC_GROUP_NO = C.FILE_FROM_NO AND C.FILE_SE = 'G' */
+        JOIN T_FILE C ON A.REQUEST_DOC_GROUP_NO = C.FILE_FROM_NO AND C.FILE_SE = 'G' AND C.DELETED_AT ='N'
+        WHERE 1=1
+          AND A.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+          AND A.DELETED_AT = 'N'
+    </select>
+
+    <update id="updateRequestDocGroup">
+        UPDATE T_REQUEST_DOC_GROUP
+        SET
+              UPDATED_NO = #{registerNo}
+            , UPDATED_DT = NOW()
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestNumber)">
+            , REQUEST_NUMBER = #{requestNumber}
+        </if>
+            , SAVE_AT = #{saveAt}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestJsonDc)">
+            , REQUEST_JSON_DC = #{requestJsonDc}
+        </if>
+        WHERE REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+    </update>
+
+    <update id="updateRequestDoc">
+        UPDATE T_REQUEST_DOC
+        SET
+              UPDATED_NO = #{registerNo}
+            , UPDATED_DT = NOW()
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessNo)">
+            , REQUEST_PROCESS_NO = #{requestProcessNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessEtcName)">
+            , REQUEST_PROCESS_ETC_NAME = #{requestProcessEtcName}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestDc)">
+            , REQUEST_DC = #{requestDc}
+        </if>
+        WHERE REQUEST_DOC_NO = #{requestDocNo}
+    </update>
+
+    <delete id="deleteRequestType">
+        DELETE FROM  T_REQUEST_TYPE
+        WHERE REQUEST_DOC_NO = #{requestDocNo}
+    </delete>
+
+    <update id="updateRequestDocDetail">
+        UPDATE T_REQUEST_DOC
+        SET
+              UPDATED_NO = #{registerNo}
+            , UPDATED_DT = NOW()
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessNo)">
+            , REQUEST_PROCESS_NO = #{requestProcessNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestProcessEtcName)">
+            , REQUEST_PROCESS_ETC_NAME = #{requestProcessEtcName}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestDc)">
+            , REQUEST_DC = #{requestDc}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestPonticSe)">
+            , REQUEST_PONTIC_SE = #{requestPonticSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(implantType)">
+            , IMPLANT_TYPE = #{implantType}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(valueSe)">
+            , VALUE_SE = #{valueSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(valueSj)">
+            , VALUE_SJ = #{valueSj}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(cementGapValue)">
+            , CEMENT_GAP_VALUE = #{cementGapValue}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(extraGapValue)">
+            , EXTRA_GAP_VALUE = #{extraGapValue}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(occlusalDistanceValue)">
+            , OCCLUSAL_DISTANCE_VALUE = #{occlusalDistanceValue}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(approximalDistanceValue)">
+            , APPROXIMAL_DISTANCE_VALUE = #{approximalDistanceValue}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(heightMinimalValue)">
+            , HEIGHT_MINIMAL_VALUE = #{heightMinimalValue}
+        </if>
+        WHERE REQUEST_DOC_NO = #{requestDocNo}
+    </update>
+
+    <delete id="deleteRequestTypeDetail">
+        DELETE FROM  T_REQUEST_TYPE
+        WHERE REQUEST_DOC_NO = #{requestDocNo}
+    </delete>
+
+    <delete id="deleteRequestDentalDetail">
+        DELETE FROM  T_REQUEST_TYPE_DENTAL
+        WHERE REQUEST_TYPE_NO = #{requestTypeNo}
+    </delete>
+
+    <delete id="deleteRequestDocDetail">
+        UPDATE T_REQUEST_DOC
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REQUEST_DOC_NO = #{requestDocNo}
+    </delete>
+
+    <select id="selectRequestDocKeyList" resultType="map">
+        /* selectRequestDocKeyList */
+        SELECT
+            REQUEST_DOC_NO AS requestDocNo , REQUEST_UUID_KEY AS requestUuidKey
+        FROM
+            T_REQUEST_DOC A
+        WHERE A.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+          AND A.DELETED_AT = 'N'
+    </select>
+
+    <select id="selectRequestProfile" resultType="com.dentner.core.cmmn.vo.ProfileVo">
+        /* FrontTransactionMapper selectRequestProfile */
+        SELECT
+            A.MEMBER_SE,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            FN_USER_NICKNM(A.MEMBER_NO) AS MEMBER_NICK_NAME,
+            B.SW_NO, B.SW_ETC, A.MEMBER_NO,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, B.SW_NO)) AS MEMBER_SW_NAME
+        FROM T_MEMBER A
+        LEFT JOIN T_MEMBER_SW B ON A.MEMBER_NO  = B.MEMBER_NO
+        WHERE A.MEMBER_NO = #{memberNo}
+          AND A.DELETED_AT = 'N'
+    </select>
+
+    <insert id="insertRequestValueData">
+        INSERT INTO T_VALUE_DATA
+            (
+                  VALUE_NO
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(cementGapValue)">
+                , CEMENT_GAP_VALUE
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(extraGapValue)">
+                , EXTRA_GAP_VALUE
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(occlusalDistanceValue)">
+                , OCCLUSAL_DISTANCE_VALUE
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(approximalDistanceValue)">
+                , APPROXIMAL_DISTANCE_VALUE
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(heightMinimalValue)">
+                , HEIGHT_MINIMAL_VALUE
+            </if>
+            ) VALUES (
+                  #{valueNo}
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(cementGapValue)">
+                , #{cementGapValue}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(extraGapValue)">
+                , #{extraGapValue}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(occlusalDistanceValue)">
+                , #{occlusalDistanceValue}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(approximalDistanceValue)">
+                , #{approximalDistanceValue}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(heightMinimalValue)">
+                , #{heightMinimalValue}
+            </if>
+             )
+    </insert>
+
+    <select id="selectRequestEstimateCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REQUEST_ESTIMATE A
+        WHERE A.REGISTER_NO = #{registerNo}
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <!-- 채팅을 보내기위해 추가로 만든 query -->
+
+    <select id="selectRequestFormDetailForChat" resultType="com.dentner.core.cmmn.vo.RequestFormDetailVo">
+        SELECT
+            FN_REQUEST_STATUS_NM(A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO) AS REQUEST_STATUS_NAME, A.REQUEST_DOC_GROUPS_NO, A.REGISTER_NO, A.REQUEST_FORM_SE,
+            (SELECT COUNT(*) FROM T_REQUEST_ESTIMATE WHERE A.REQUEST_FORM_NO = REQUEST_FORM_NO) AS REQUEST_DOC_CNT,
+            A.REQUEST_FORM_NO, A.REQUEST_FORM_SJ, A.REQUEST_FORM_SE,
+            A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, A.REQUEST_SW, A.REQUEST_STATUS,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = A.REGISTER_NO AND MEMBER_SE = 'A') AS MEMBER_NICK_NAME,
+            A.REQUEST_SW, A.REQUEST_FORM_TYPE, A.REQUEST_FORM_DC, A.REQUEST_DEAL_STATUS,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, D.SW_NO)) AS MEMBER_SW_NAME,
+            (SELECT GROUP_CONCAT(TYPE_NAME) FROM T_TEETH_TYPE WHERE  FIND_IN_SET(TEETH_TYPE_NO, A.REQUEST_FORM_TYPE)) AS REQUEST_FORM_TYPE_NAME,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 1, 2) AS REQUEST_EXPIRE_TIME_HOUR,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 3, 2) AS REQUEST_EXPIRE_TIME_MIN,
+            SUBSTRING(A.REQUEST_DEADLINE_TIME, 1, 2) AS REQUEST_DEADLINE_TIME_HOUR,
+            SUBSTRING(A.REQUEST_DEADLINE_TIME, 3, 2) AS REQUEST_DEADLINE_TIME_MIN,
+            D.SW_ETC, A.REQUEST_DESIGNER_NO, C.MEMBER_NAME AS DESIGNER_NAME
+        FROM T_REQUEST_FORM A
+                 JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+                 LEFT JOIN T_MEMBER C ON A.REQUEST_DESIGNER_NO = C.MEMBER_NO
+                 LEFT JOIN T_MEMBER_SW D ON B.MEMBER_NO  = D.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+    
+    <select id="selectParentAnswerInfo" resultType="com.dentner.core.cmmn.vo.MemberVo">
+        SELECT
+            FN_USER_NICKNM(A.REGISTER_NO) AS MEMBER_NICK_NAME,
+            B.MEMBER_HP, B.MEMBER_SE, B.MEMBER_NO
+        FROM
+            T_REQUEST_FORM_ANSWER A, T_MEMBER B
+        WHERE A.REGISTER_NO = B.MEMBER_NO
+            AND A.REQUEST_FORM_ANSWER_NO = #{parentAnswerNo}
+    </select>
+
+    <select id="selectRequestJsonView" resultType="com.dentner.core.cmmn.vo.RequestJsonVo">
+        /* FrontTransactionMapper selectRequestJsonView */
+        SELECT
+            RDG.REQUEST_JSON_DC, RDG.REQUEST_DOC_GROUP_NO, RF.REQUEST_DESIGNER_NO, RF.REGISTER_NO, RF.REQUEST_FORM_NO
+        FROM T_REQUEST_DOC_GROUP RDG
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(RDG.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        WHERE RDG.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+          AND RDG.DELETED_AT = 'N'
+          AND RF.REQUEST_FORM_NO = #{requestFormNo}
+          AND (RF.REGISTER_NO  = #{memberNo} OR RF.REQUEST_DESIGNER_NO = #{memberNo})
+    </select>
+</mapper>

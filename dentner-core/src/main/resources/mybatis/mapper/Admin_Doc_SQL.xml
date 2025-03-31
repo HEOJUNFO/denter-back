@@ -1,0 +1,85 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminDocMapper">
+    <select id="selectDocList" resultType="com.dentner.core.cmmn.vo.AdminDocVo">
+        SELECT * FROM (
+            SELECT
+                A.REQUEST_DOC_GROUP_NO , A.REQUEST_NUMBER, A.REQUEST_SE, B.REQUEST_FORM_SE, B.REQUEST_FORM_NO,
+                C.MEMBER_EMAIL, D.MEMBER_EMAIL AS DESIGNER_EMAIL, A.REGISTER_DT, B.REQUEST_FORM_SJ, C.MEMBER_NAME, D.MEMBER_NAME AS DESIGNER_NAME,
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_NICK_NAME,
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = D.MEMBER_NO AND DELETED_AT = 'N' AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
+                (SELECT  TRIM(BOTH ',' FROM GROUP_CONCAT(REQUEST_DC SEPARATOR ',')) FROM T_REQUEST_DOC WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO) AS DOC_REQUEST_DC,
+                B.REQUEST_FORM_DC 
+            FROM T_REQUEST_DOC_GROUP A
+            LEFT JOIN T_REQUEST_FORM B ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0 AND B.DELETED_AT = 'N'
+            LEFT JOIN T_MEMBER C ON A.REGISTER_NO = C.MEMBER_NO AND C.DELETED_AT = 'N'
+            LEFT JOIN T_MEMBER D ON B.REQUEST_DESIGNER_NO = D.MEMBER_NO AND D.DELETED_AT = 'N'
+            WHERE A.DELETED_AT = 'N'
+              AND A.REQUEST_SE = #{requestSe}
+        ) TB
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchType)">
+            AND REQUEST_FORM_SE = #{searchType}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (DESIGNER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REQUEST_FORM_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REQUEST_NUMBER LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectDocListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT
+        FROM (
+            SELECT
+                A.REQUEST_DOC_GROUP_NO , A.REQUEST_NUMBER, A.REQUEST_SE, B.REQUEST_FORM_SE, B.REQUEST_FORM_NO,
+                C.MEMBER_EMAIL, D.MEMBER_EMAIL AS DESIGNER_EMAIL, A.REGISTER_DT,  B.REQUEST_FORM_SJ,
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_NICK_NAME,
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = D.MEMBER_NO AND DELETED_AT = 'N' AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME
+            FROM T_REQUEST_DOC_GROUP A
+            LEFT JOIN T_REQUEST_FORM B ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0 AND B.DELETED_AT = 'N'
+            LEFT JOIN T_MEMBER C ON A.REGISTER_NO = C.MEMBER_NO AND C.DELETED_AT = 'N'
+            LEFT JOIN T_MEMBER D ON B.REQUEST_DESIGNER_NO = D.MEMBER_NO AND D.DELETED_AT = 'N'
+            WHERE A.DELETED_AT = 'N'
+              AND A.REQUEST_SE = #{requestSe}
+        ) TB
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchType)">
+            AND REQUEST_FORM_SE = #{searchType}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (DESIGNER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REQUEST_FORM_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REQUEST_NUMBER LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectDocDetail" resultType="com.dentner.core.cmmn.vo.AdminDocVo">
+        SELECT
+            A.REQUEST_DOC_GROUP_NO , A.REQUEST_NUMBER, A.REQUEST_SE, B.REQUEST_FORM_SE, B.REQUEST_FORM_NO, B.REQUEST_FORM_SJ, C.MEMBER_NAME, D.MEMBER_NAME AS DESIGNER_NAME,
+            C.MEMBER_EMAIL, D.MEMBER_EMAIL AS DESIGNER_EMAIL, A.REGISTER_DT,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_NICK_NAME,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = D.MEMBER_NO AND DELETED_AT = 'N' AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
+            (SELECT  TRIM(BOTH ',' FROM GROUP_CONCAT(REQUEST_DC SEPARATOR ',')) FROM T_REQUEST_DOC WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO) AS DOC_REQUEST_DC,
+            B.REQUEST_FORM_DC 
+        FROM T_REQUEST_DOC_GROUP A
+        LEFT JOIN T_REQUEST_FORM B ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0 AND B.DELETED_AT = 'N'
+        LEFT JOIN T_MEMBER C ON A.REGISTER_NO = C.MEMBER_NO AND C.DELETED_AT = 'N'
+        LEFT JOIN T_MEMBER D ON B.REQUEST_DESIGNER_NO = D.MEMBER_NO AND D.DELETED_AT = 'N'
+        WHERE A.DELETED_AT = 'N'
+          AND A.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+        ORDER BY REQUEST_FORM_NO DESC LIMIT 1
+    </select>
+
+</mapper>

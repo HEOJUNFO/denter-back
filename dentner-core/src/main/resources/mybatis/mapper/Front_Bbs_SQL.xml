@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.FrontBbsMapper">
+    <select id="selectBbs" resultType="com.dentner.core.cmmn.vo.BbsVo">
+        SELECT
+            A.BBS_NO, A.BBS_SJ, A.BBS_CN, A.BBS_SE, A.BBS_TP, A.REGISTER_DT
+        FROM T_BBS A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.BBS_SE = #{bbsSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bbsTp)">
+          AND A.BBS_TP = #{bbsTp}
+        </if>
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectBbsCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_BBS A
+        WHERE 1=1
+            AND A.DELETED_AT = 'N'
+            AND A.BBS_SE = #{bbsSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(bbsTp)">
+            AND A.BBS_TP = #{bbsTp}
+        </if>
+    </select>
+
+</mapper>

@@ -1,0 +1,544 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.FrontMypageMapper">
+    <select id="selectMypageProfile" resultType="com.dentner.core.cmmn.vo.MemberProfileVo">
+        SELECT DISTINCT
+            B.MEMBER_NICK_NAME, A.MEMBER_NO, B.ONE_INTRODUCTION, B.MEMBER_AREA_NO, B.FIX_PROSTHETICS_NO,
+            B.REMOVABLE_PROSTHETICS_NO, B.CORRECT_NO, B.ALL_ON_NO, B.ESTABLISH_YEAR, B.EMPLOYEE_CNT, B.ABOUT_US,
+            IFNULL(B.SHOW_AT, 'Y') AS SHOW_AT,
+            B.MODIFY_CNT, B.MODIFY_WARRANTY_DAY, B.NOTE, B.MEMBER_SE,
+            (SELECT FILE_URL FROM T_FILE WHERE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',memberSe)">FILE_SE = 'L'</if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe) ||
+                    @com.dentner.core.util.MybatisUtils@equals('C',memberSe)">FILE_SE = 'D'</if>
+            AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_PROFILE_IMAGE,
+            C.SW_NO, C.SW_ETC,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, C.SW_NO)) AS SW_NO_NAME,
+            (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_CNT,
+            TRUNCATE((SELECT SUM(REVIEW_RATE) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N') / (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = A.MEMBER_NO AND DELETED_AT = 'N'),1) AS REVIEW_AVG,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'A' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.MEMBER_NO) AS WON_PRICE,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'B' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.MEMBER_NO) AS DOLLAR_PRICE
+        FROM T_MEMBER A
+        JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO AND B.MEMBER_SE = #{memberSe}
+        LEFT JOIN T_MEMBER_SW C ON A.MEMBER_NO = C.MEMBER_NO
+        WHERE 1=1
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.DELETED_AT = 'N'
+    </select>
+
+    <update id="updateMypageMember">
+        UPDATE T_MEMBER
+        SET MEMBER_NICK_NAME = #{memberNickName}
+          , UPDATED_DT = NOW()
+        WHERE MEMBER_NO = #{memberNo}
+    </update>
+
+    <update id="updateMypageProfile">
+        UPDATE T_MEMBER_PROFILE
+        SET
+              MEMBER_NICK_NAME = #{memberNickName}
+            , UPDATED_DT = NOW()
+            , ONE_INTRODUCTION = #{oneIntroduction}
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',memberSe)">
+            , MEMBER_AREA_NO = #{memberAreaNo}
+            , FIX_PROSTHETICS_NO = #{fixProstheticsNo}
+            , REMOVABLE_PROSTHETICS_NO = #{removableProstheticsNo}
+            , CORRECT_NO = #{correctNo}
+            , ALL_ON_NO = #{allOnNo}
+            , ESTABLISH_YEAR = #{establishYear}
+            , EMPLOYEE_CNT = #{employeeCnt}
+            , ABOUT_US = #{aboutUs}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe)">
+            , MODIFY_CNT = #{modifyCnt}
+            , MODIFY_WARRANTY_DAY = #{modifyWarrantyDay}
+            , NOTE = #{note}
+        </if>
+            , SHOW_AT = #{showAt}
+        WHERE MEMBER_NO = #{memberNo}
+          AND MEMBER_SE = #{memberSe}
+    </update>
+
+    <update id="updateMypageSw">
+        UPDATE T_MEMBER_SW
+        SET SW_NO = #{swNo}
+          , SW_ETC = #{swEtc}
+          , UPDATED_DT = NOW()
+        WHERE MEMBER_NO = #{memberNo}
+    </update>
+
+    <update id="updateMypageMemberInfo">
+        UPDATE T_MEMBER
+        SET UPDATED_DT = NOW()
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberDentistryName)">
+            , MEMBER_DENTISTRY_NAME = #{memberDentistryName}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberBusinessNumber)">
+            , MEMBER_BUSINESS_NUMBER = #{memberBusinessNumber}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberAddress)">
+            , MEMBER_ADDRESS = #{memberAddress}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberDetailAddress)">
+            , MEMBER_DETAIL_ADDRESS = #{memberDetailAddress}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberAlarmAt)">
+            , MEMBER_ALARM_AT = #{memberAlarmAt}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberAlarmSe)">
+            , MEMBER_ALARM_SE = #{memberAlarmSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberJobSe)">
+            , MEMBER_JOB_SE = #{memberJobSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberBusinessName)">
+            , MEMBER_BUSINESS_NAME = #{memberBusinessName}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberTimezoneNo)">
+            , MEMBER_TIMEZONE_NO = #{memberTimezoneNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberBankNo)">
+            , MEMBER_BANK_NO = #{memberBankNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberAccountName)">
+            , MEMBER_ACCOUNT_NAME = #{memberAccountName}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberAccountNumber)">
+            , MEMBER_ACCOUNT_NUMBER = #{memberAccountNumber}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberRepresentativeName)">
+            , MEMBER_REPRESENTATIVE_NAME = #{memberRepresentativeName}
+        </if>
+        WHERE MEMBER_NO = #{memberNo}
+    </update>
+
+    <update id="updateMypageOut">
+        UPDATE T_MEMBER
+        SET DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE MEMBER_NO = #{memberNo}
+    </update>
+
+    <select id="selectInterestList" resultType="com.dentner.core.cmmn.vo.InterestVo">
+        SELECT
+            INTEREST_NO, INTEREST_SE, A.MEMBER_NO, TARGET_NO, B.MEMBER_DENTISTRY_NAME, C.ONE_INTRODUCTION, C.MEMBER_NICK_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',interestSe)">FILE_SE = 'L'</if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',interestSe) ||
+                @com.dentner.core.util.MybatisUtils@equals('C',interestSe)">FILE_SE = 'D'</if>
+            AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE
+        FROM T_INTEREST A
+        JOIN T_MEMBER B ON A.TARGET_NO = B.MEMBER_NO
+        JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO AND C.MEMBER_SE = #{memberSe}
+        WHERE 1=1
+          AND B.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.INTEREST_SE = #{interestSe}
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectInterestListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_INTEREST A
+        JOIN T_MEMBER B ON A.TARGET_NO = B.MEMBER_NO
+        JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO AND C.MEMBER_SE = #{memberSe}
+        WHERE 1=1
+          AND B.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.INTEREST_SE = #{interestSe}
+    </select>
+
+    <select id="selectBlockList" resultType="com.dentner.core.cmmn.vo.BlockVo">
+        SELECT
+            BLOCK_NO, BLOCK_SE, A.MEMBER_NO, TARGET_NO, B.MEMBER_DENTISTRY_NAME, C.MEMBER_NICK_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',blockSe)">FILE_SE = 'L'</if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',blockSe) ||
+                @com.dentner.core.util.MybatisUtils@equals('C',blockSe)">FILE_SE = 'D'</if>
+            AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE
+        FROM T_BLOCK A
+        JOIN T_MEMBER B ON A.TARGET_NO = B.MEMBER_NO
+        JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO AND C.MEMBER_SE = #{memberSe}
+        WHERE 1=1
+          AND B.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.BLOCK_SE = #{blockSe}
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectBlockListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_BLOCK A
+        JOIN T_MEMBER B ON A.TARGET_NO = B.MEMBER_NO
+        JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO AND C.MEMBER_SE = #{memberSe}
+        WHERE 1=1
+          AND B.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.BLOCK_SE = #{blockSe}
+    </select>
+
+    <update id="updateMypageType">
+        INSERT INTO T_MEMBER_TYPE
+            (
+                  MEMBER_NO
+                , MEMBER_FIRST_VALUE
+                , MEMBER_MIDDLE_VALUE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',amountType)">
+                , TYPE_AMOUNT
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',amountType)">
+                , TYPE_DOLLAR_AMOUNT
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('C',amountType)">
+                , TYPE_ADD_AMOUNT
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('D',amountType)">
+                , TYPE_ADD_DOLLAR_AMOUNT
+            </if>
+            ) VALUES (
+                 #{memberNo}
+               , #{memberFirstValue}
+               , #{memberMiddleValue}
+               , #{typeAmount}
+            )  ON DUPLICATE KEY
+        UPDATE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',amountType)">
+                TYPE_AMOUNT = #{typeAmount}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',amountType)">
+                TYPE_DOLLAR_AMOUNT = #{typeAmount}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('C',amountType)">
+                TYPE_ADD_AMOUNT = #{typeAmount}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('D',amountType)">
+                TYPE_ADD_DOLLAR_AMOUNT = #{typeAmount}
+            </if>
+           , UPDATED_DT = NOW()
+           , UPDATED_NO = #{memberNo}
+    </update>
+
+    <select id="selectMemberTypeList" resultType="com.dentner.core.cmmn.vo.MemberTypeVo">
+        SELECT
+            A.MEMBER_TYPE_NO, A.MEMBER_NO, A.MEMBER_MIDDLE_VALUE, A.TYPE_AMOUNT, A.TYPE_DOLLAR_AMOUNT,
+            A.TYPE_ADD_AMOUNT, A.TYPE_ADD_DOLLAR_AMOUNT
+        FROM T_MEMBER_TYPE A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <select id="selectReviewList" resultType="com.dentner.core.cmmn.vo.ReviewVo">
+        SELECT
+            A.REVIEW_NO, A.TARGET_NO, FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            A.REVIEW_CN, A.REQUEST_FORM_NO, B.MEMBER_NO,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            B.MEMBER_DENTISTRY_NAME, C.ONE_INTRODUCTION, C.MEMBER_NICK_NAME, A.REVIEW_RATE
+        FROM T_REVIEW A
+        JOIN T_MEMBER B ON
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',reviewSe)">
+            A.TARGET_NO = B.MEMBER_NO
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',reviewSe)">
+            A.MEMBER_NO = B.MEMBER_NO
+        </if>
+        LEFT JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',reviewSe)">
+            AND C.MEMBER_SE = 'C'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',reviewSe)">
+            AND C.MEMBER_SE = 'A'
+        </if>
+        WHERE A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',reviewSe)">
+            AND A.MEMBER_NO = #{memberNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',reviewSe)">
+            AND A.TARGET_NO = #{memberNo}
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectReviewListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REVIEW A
+        JOIN T_MEMBER B ON
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',reviewSe)">
+            A.TARGET_NO = B.MEMBER_NO
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',reviewSe)">
+            A.MEMBER_NO = B.MEMBER_NO
+        </if>
+        LEFT JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',reviewSe)">
+            AND C.MEMBER_SE = 'C'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',reviewSe)">
+            AND C.MEMBER_SE = 'A'
+        </if>
+        WHERE A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',reviewSe)">
+            AND A.MEMBER_NO = #{memberNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',reviewSe)">
+            AND A.TARGET_NO = #{memberNo}
+        </if>
+    </select>
+
+    <delete id="deleteMypageReview">
+        UPDATE T_REVIEW
+        SET DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REVIEW_NO = #{reviewNo}
+    </delete>
+
+    <delete id="updateReview">
+        UPDATE T_REVIEW
+        SET UPDATED_NO  = #{memberNo}
+          , UPDATED_DT  = NOW()
+          , REVIEW_RATE = #{reviewRate}
+          , REVIEW_CN   = #{reviewCn}
+        WHERE REVIEW_NO = #{reviewNo}
+          AND MEMBER_NO = #{memberNo}
+    </delete>
+
+    <select id="selectReviewDetail" resultType="com.dentner.core.cmmn.vo.ReviewVo">
+        SELECT
+            A.REVIEW_NO, A.TARGET_NO, FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            A.REVIEW_CN, A.REQUEST_FORM_NO,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = A.TARGET_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            B.MEMBER_DENTISTRY_NAME, C.ONE_INTRODUCTION, C.MEMBER_NICK_NAME, A.REVIEW_RATE
+        FROM T_REVIEW A
+        JOIN T_MEMBER B ON A.TARGET_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO AND C.MEMBER_SE = #{memberSe}
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.REVIEW_NO = #{reviewNo}
+    </select>
+
+    <delete id="updateMypagePhone">
+        UPDATE T_MEMBER
+        SET UPDATED_NO = #{memberNo}
+          , UPDATED_DT = NOW()
+          , MEMBER_HP_NATION = #{memberContactNation}
+          , MEMBER_HP = #{phone}
+        WHERE MEMBER_NO = #{memberNo}
+    </delete>
+
+    <select id="selectMypagePassword" resultType="string">
+        SELECT
+            A.MEMBER_PASSWORD
+        FROM T_MEMBER A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <delete id="updateMypagePassword">
+        UPDATE T_MEMBER
+        SET UPDATED_NO = #{memberNo}
+          , UPDATED_DT = NOW()
+          , MEMBER_PASSWORD = #{password}
+        WHERE MEMBER_NO = #{memberNo}
+    </delete>
+
+    <select id="selectMypage" resultType="com.dentner.core.cmmn.vo.MemberVo">
+        SELECT DISTINCT
+            A.MEMBER_NO, A.MEMBER_EMAIL, A.MEMBER_TP, A.MEMBER_NAME, A.MEMBER_HP_NATION, A.MEMBER_HP, B.MEMBER_NICK_NAME,
+            A.MEMBER_LICENSE_NUMBER, A.MEMBER_DENTISTRY_NAME, A.MEMBER_REPRESENTATIVE_NAME, A.MEMBER_BUSINESS_NUMBER, A.MEMBER_ADDRESS,
+            A.MEMBER_DETAIL_ADDRESS, A.MEMBER_FIRST_NAME, A.MEMBER_LAST_NAME, A.MEMBER_ALARM_AT, A.MEMBER_ALARM_SE, A.MEMBER_BUSINESS_NAME,
+            A.MEMBER_JOB_SE, A.MEMBER_TIMEZONE_NO, A.MEMBER_BANK_NO,
+            (SELECT CODE_DESC  FROM T_CODE WHERE CODE_NO = A.MEMBER_BANK_NO) AS MEMBER_ACCOUNT_BANK_NO, 
+            A.MEMBER_ACCOUNT_NAME, A.MEMBER_ACCOUNT_NUMBER, A.MEMBER_MARKETING_AT,
+            FL1.FILE_URL AS MEMBER_LICENSE_FILE, FL1.FILE_NO AS MEMBER_LICENSE_FILE_NO, FL2.FILE_URL AS MEMBER_BUSINESS_FILE, FL2.FILE_NO AS MEMBER_BUSINESS_FILE_NO,
+            FL1.FILE_REAL_NAME AS MEMBER_LICENSE_REAL_NAME, FL2.FILE_REAL_NAME AS MEMBER_BUSINESS_REAL_NAME, FL1.FILE_SIZE AS MEMBER_LICENSE_FILE_SIZE, FL2.FILE_SIZE AS MEMBER_BUSINESS_FILE_SIZE,
+            (SELECT COUNT(*) FROM T_MEMBER_PROFILE WHERE MEMBER_NO = A.MEMBER_NO AND DELETED_AT = 'N') AS MULTI_PROFILE_CNT
+        FROM T_MEMBER A
+        LEFT JOIN (SELECT FILE_REAL_NAME, FILE_FROM_NO, FILE_URL, FILE_NO, FILE_SIZE FROM T_FILE WHERE FILE_SE = 'A' AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) FL1 ON FL1.FILE_FROM_NO = A.MEMBER_NO
+        LEFT JOIN (SELECT FILE_REAL_NAME, FILE_FROM_NO, FILE_URL, FILE_NO, FILE_SIZE FROM T_FILE WHERE FILE_SE = 'B' AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) FL2 ON FL2.FILE_FROM_NO = A.MEMBER_NO
+        JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO AND B.MEMBER_SE = #{memberSe}
+        WHERE 1=1
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.DELETED_AT = 'N'
+    </select>
+
+    <select id="selectMypageOutEnd" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM T_REQUEST_FORM A
+        WHERE A.DELETED_AT = 'N'
+          AND A.REQUEST_STATUS IN ('C', 'D')
+          AND (A.REGISTER_NO = #{memberNo} OR A.REQUEST_DESIGNER_NO = #{memberNo})
+    </select>
+
+    <select id="selectProfileDesigner" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM T_MEMBER_PROFILE A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <insert id="insertProfileDesigner">
+        INSERT INTO T_MEMBER_PROFILE ( MEMBER_NO, MEMBER_SE) VALUES ( #{memberNo}, #{memberSe})
+    </insert>
+
+    <insert id="insertProfileDesignerSw">
+        INSERT INTO T_MEMBER_SW ( MEMBER_NO ) VALUES ( #{memberNo})
+    </insert>
+
+    <select id="selectAlarmList" resultType="com.dentner.core.cmmn.vo.AlarmCodeVo">
+        SELECT
+            A.ALARM_CODE_NO,
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(type)">
+                <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+                    A.ALARM_CODE_NAME,
+                    A.ALARM_CODE_DESC,
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+                    A.ALARM_CODE_ENG_NAME AS ALARM_CODE_NAME,
+                    A.ALARM_CODE_ENG_DESC AS ALARM_CODE_DESC,
+                </if>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isEmpty(type)">
+                A.ALARM_CODE_NAME,
+                A.ALARM_CODE_DESC,
+            </if>
+            A.ALARM_CODE_ORDR,
+            A.ALARM_CODE_SE,
+            CASE WHEN B.ALARM_SETTING_NO IS NOT NULL THEN 'Y' ELSE 'N' END AS ALARM_STATUS
+        FROM T_ALARM_CODE A
+        LEFT JOIN T_ALARM_SETTING B ON A.ALARM_CODE_NO = B.ALARM_CODE_NO AND B.MEMBER_NO = #{memberNo}
+        WHERE A.ALARM_CODE_SE = #{memberSe}
+        ORDER BY A.ALARM_CODE_ORDR
+    </select>
+
+    <insert id="insertAlarmSetting">
+        INSERT INTO T_ALARM_SETTING
+            (
+                  ALARM_CODE_NO
+                , MEMBER_NO
+            ) VALUES (
+                  #{code}
+                , #{memberNo}
+            )
+    </insert>
+
+    <delete id="deleteAlarmSetting">
+        DELETE FROM T_ALARM_SETTING
+        WHERE ALARM_CODE_NO = #{code}
+          AND MEMBER_NO = #{memberNo}
+    </delete>
+
+    <update id="updateProfileShow">
+        UPDATE T_MEMBER_PROFILE
+        SET  SHOW_AT = #{type}
+        WHERE MEMBER_NO = #{memberNo}
+          AND MEMBER_SE = #{memberSe}
+    </update>
+
+    <insert id="insertMemberOut">
+        INSERT INTO T_MEMBER_OUT( MEMBER_NO ) VALUES ( #{memberNo} )
+    </insert>
+
+    <select id="selectMypageOutMileage" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM T_REQUEST_FORM A
+        WHERE A.DELETED_AT = 'N'
+          AND A.REQUEST_STATUS IN ('C', 'D')
+          AND (A.REGISTER_NO = #{memberNo} OR A.REQUEST_DESIGNER_NO = #{memberNo})
+    </select>
+
+    <update id="updateProfileDesignerName">
+        UPDATE T_MEMBER
+        SET  MEMBER_NAME = (SELECT MEMBER_REPRESENTATIVE_NAME FROM T_MEMBER WHERE MEMBER_NO = #{memberNo})
+        WHERE MEMBER_NO = #{memberNo}
+    </update>
+    
+    <select id="selectPhoneCheck" parameterType="com.dentner.core.cmmn.dto.PhoneDto" resultType="int">
+      <![CDATA[
+    	SELECT COUNT(*) FROM T_MEMBER WHERE MEMBER_HP_NATION = #{memberContactNation} AND MEMBER_HP = #{phone} AND MEMBER_NO <> #{memberNo} AND DELETED_AT = 'N'
+      ]]>
+    </select>
+
+    <select id="selectReviewMemberList" resultType="com.dentner.core.cmmn.vo.ReviewVo">
+        SELECT
+            A.REVIEW_NO, A.TARGET_NO, A.REGISTER_DT,
+            A.REVIEW_CN, A.REQUEST_FORM_NO, B.MEMBER_NO,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            B.MEMBER_DENTISTRY_NAME, C.ONE_INTRODUCTION, C.MEMBER_NICK_NAME, A.REVIEW_RATE
+        FROM T_REVIEW A
+        JOIN T_MEMBER B ON A.MEMBER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO AND C.MEMBER_SE = 'A'
+        WHERE A.DELETED_AT = 'N'
+          AND A.TARGET_NO = #{memberNo}
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectReviewMemberListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REVIEW A
+        JOIN T_MEMBER B ON A.MEMBER_NO = B.MEMBER_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.TARGET_NO = #{memberNo}
+    </select>
+
+    <select id="selectAlarmListNew" resultType="com.dentner.core.cmmn.vo.AlarmCodeVo">
+        SELECT
+            A.ALARM_CODE_NO, A.ALARM_CODE_TP,
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(type)">
+            <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+                A.ALARM_CODE_NAME,
+                A.ALARM_CODE_DESC,
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+                A.ALARM_CODE_ENG_NAME AS ALARM_CODE_NAME,
+                A.ALARM_CODE_ENG_DESC AS ALARM_CODE_DESC,
+            </if>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(type)">
+            A.ALARM_CODE_NAME,
+            A.ALARM_CODE_DESC,
+        </if>
+            A.ALARM_CODE_ORDR,
+            A.ALARM_CODE_SE,
+            CASE WHEN B.ALARM_SETTING_NO IS NOT NULL THEN 'Y' ELSE 'N' END AS ALARM_STATUS
+        FROM T_ALARM_CODE_NEW A
+        LEFT JOIN T_ALARM_SETTING B ON A.ALARM_CODE_NO = B.ALARM_CODE_NO AND B.MEMBER_NO = #{memberNo}
+        WHERE A.ALARM_CODE_SE = #{memberSe}
+        ORDER BY A.ALARM_CODE_TP, A.ALARM_CODE_ORDR
+    </select>
+
+    <insert id="insertAlarmAllSetting">
+        INSERT INTO T_ALARM_SETTING (ALARM_CODE_NO, MEMBER_NO)
+        SELECT ALARM_CODE_NO, #{memberNo}
+        FROM T_ALARM_CODE_NEW
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'A'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'B'
+        </if>
+            AND ALARM_CODE_TP = #{code}
+    </insert>
+
+    <delete id="deleteAlarmAllSetting">
+        DELETE FROM T_ALARM_SETTING
+        WHERE MEMBER_NO = #{memberNo}
+          AND ALARM_CODE_NO IN (select ALARM_CODE_NO from T_ALARM_CODE_NEW
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'A'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('A', memberSe)">
+            WHERE ALARM_CODE_SE = 'B'
+        </if>
+          AND ALARM_CODE_TP = #{code})
+    </delete>
+</mapper>

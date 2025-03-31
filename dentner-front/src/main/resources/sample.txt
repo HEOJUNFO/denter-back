@@ -1,0 +1,14 @@
+application-s3.yml
+
+cloud:
+  aws:
+    s3:
+      bucket: #버킷명
+    credentials:
+      access-key: #발급 받은 Access key
+      secret-key: #발급 받은 Secret key
+    region:
+      static: ap-northeast-2
+      auto: false
+    stack:
+      auto: false 

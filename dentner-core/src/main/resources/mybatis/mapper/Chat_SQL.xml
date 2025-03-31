@@ -1,0 +1,321 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.ChatMapper">
+
+    <insert id="insertChatRoom" useGeneratedKeys="true" keyProperty="roomNo">
+        INSERT INTO T_CHAT_ROOM
+            (
+                  MEMBER_NO
+                , TARGET_NO
+                , MEMBER_SE
+            ) VALUES (
+                  #{memberNo}
+                , #{targetNo}
+                , #{memberSe}
+            )
+    </insert>
+
+    <select id="selectChatRoomRequestList" resultType="com.dentner.core.cmmn.vo.ChatRoomVo">
+        SELECT
+            A.ROOM_NO, G.DELETED_AT AS MEMBER_OUT_AT,
+            CASE WHEN  A.MEMBER_SE = 'B' THEN
+                (SELECT MEMBER_DENTISTRY_NAME FROM T_MEMBER WHERE MEMBER_NO = A.TARGET_NO)
+                ELSE B.MEMBER_NICK_NAME END AS MEMBER_NICK_NAME,
+            A.TARGET_NO,
+            CASE WHEN C.MSG_TYPE = '1' THEN C.MSG
+                WHEN C.MSG_TYPE = '2' THEN '[파일]'
+                WHEN C.MSG_TYPE = '3' THEN '[사진]'
+                ELSE ''
+            END AS LAST_MESSAGE,
+            FN_CODE_NM(B.MEMBER_AREA_NO, 'NAME') AS MEMBER_AREA_NAME, F.PROSTHETICS_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE
+            <if test="@com.dentner.core.util.MybatisUtils@equals('B',targetSe)">FILE_SE = 'L'</if>
+            <if test="@com.dentner.core.util.MybatisUtils@equals('C',targetSe)">FILE_SE = 'D'</if>
+            AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N' LIMIT 1) AS MEMBER_PROFILE_IMAGE,
+            CASE
+                WHEN TIMESTAMPDIFF(HOUR, FN_GET_TIMEZONE_DATE(#{memberNo}, C.REGISTER_DT), FN_GET_TIMEZONE_DATE(#{memberNo}, NOW())) <![CDATA[<]]> 24 THEN
+            CONCAT(
+                CASE WHEN DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{memberNo}, C.REGISTER_DT), '%p') = 'AM' THEN '오전 'ELSE '오후 ' END, DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{memberNo}, C.REGISTER_DT), '%l:%i')
+            )
+            ELSE DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{memberNo}, C.REGISTER_DT), '%Y-%m-%d')
+            END AS LAST_MESSAGE_TIME,
+            CASE
+                WHEN D.UNREAD_COUNT > 99 THEN '+99'
+                ELSE D.UNREAD_COUNT
+            END AS UNREAD_MESSAGE_COUNT,
+            (SELECT IF(COUNT(*) > 0, 'Y', 'N') FROM T_INTEREST WHERE MEMBER_NO = A.MEMBER_NO
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',targetSe)">AND INTEREST_SE = 'B'</if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',targetSe)">AND INTEREST_SE = 'A'</if>
+                AND TARGET_NO = A.TARGET_NO) AS INTEREST_YN
+        FROM T_CHAT_ROOM A
+        JOIN T_MEMBER_PROFILE B ON A.TARGET_NO = B.MEMBER_NO AND A.MEMBER_SE = B.MEMBER_SE
+            LEFT JOIN (
+                SELECT T1.ROOM_NO, T1.MSG, T1.MSG_TYPE, T1.REGISTER_DT
+                FROM T_CHAT T1
+                INNER JOIN (
+                    SELECT ROOM_NO, MAX(REGISTER_DT) AS LATEST_DATE
+                    FROM T_CHAT
+                GROUP BY ROOM_NO
+                ) T2 ON T1.ROOM_NO = T2.ROOM_NO AND T1.REGISTER_DT = T2.LATEST_DATE
+            ) C ON A.ROOM_NO = C.ROOM_NO
+            LEFT JOIN (
+                SELECT ROOM_NO, COUNT(*) AS UNREAD_COUNT
+                FROM T_CHAT
+                WHERE READ_YN = 'N'
+                  AND TO_NO = #{memberNo}
+                GROUP BY ROOM_NO
+            ) D ON A.ROOM_NO = D.ROOM_NO
+            LEFT JOIN (
+                SELECT MEMBER_NO,
+                GROUP_CONCAT(DISTINCT FN_TEETH_NM(MEMBER_FIRST_VALUE)) AS PROSTHETICS_NAME
+                FROM T_MEMBER_TYPE GROUP BY MEMBER_NO
+            ) F ON B.MEMBER_NO = F.MEMBER_NO
+            JOIN T_MEMBER G ON A.TARGET_NO = G.MEMBER_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.MEMBER_SE = #{targetSe}
+          AND NOT EXISTS (
+            SELECT 1
+                FROM T_BLOCK TB
+                WHERE TB.BLOCK_SE = 'C'
+                AND TB.TARGET_NO = #{memberNo}
+                AND TB.MEMBER_NO = B.MEMBER_NO
+            )
+        ORDER BY C.REGISTER_DT DESC, A.ROOM_NO DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectChatRoomRequestListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CHAT_ROOM A
+        JOIN T_MEMBER_PROFILE B ON A.TARGET_NO = B.MEMBER_NO AND A.MEMBER_SE = B.MEMBER_SE
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.MEMBER_SE = #{targetSe}
+          AND NOT EXISTS (
+            SELECT 1
+            FROM T_BLOCK TB
+            WHERE TB.BLOCK_SE = 'C'
+              AND TB.TARGET_NO = #{memberNo}
+              AND TB.MEMBER_NO = B.MEMBER_NO
+        )
+    </select>
+
+    <select id="selectChatRoomList" resultType="com.dentner.core.cmmn.vo.ChatRoomVo">
+        SELECT
+            A.ROOM_NO, B.MEMBER_NICK_NAME, A.MEMBER_NO AS TARGET_NO, B.DELETED_AT AS MEMBER_OUT_AT,
+            CASE WHEN C.MSG_TYPE = '1' THEN C.MSG
+                 WHEN C.MSG_TYPE = '2' THEN '[파일]'
+                 WHEN C.MSG_TYPE = '3' THEN '[사진]'
+                 ELSE ''
+                END AS LAST_MESSAGE,
+            FN_CODE_NM(B.MEMBER_AREA_NO, 'NAME') AS MEMBER_AREA_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N' LIMIT 1) AS MEMBER_PROFILE_IMAGE,
+            CASE
+                WHEN TIMESTAMPDIFF(HOUR, C.REGISTER_DT, NOW()) <![CDATA[<]]> 24 THEN
+            CONCAT(
+                CASE WHEN DATE_FORMAT(C.REGISTER_DT, '%p') = 'AM' THEN '오전 'ELSE '오후 ' END, DATE_FORMAT(C.REGISTER_DT, '%l:%i')
+            )
+            ELSE DATE_FORMAT(C.REGISTER_DT, '%Y-%m-%d')
+            END AS LAST_MESSAGE_TIME,
+            CASE
+                WHEN D.UNREAD_COUNT > 99 THEN '+99'
+                ELSE D.UNREAD_COUNT
+            END AS UNREAD_MESSAGE_COUNT,
+            E.SW_ETC,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, E.SW_NO)) AS SW_NAME,
+            (SELECT IF(COUNT(*) > 0, 'Y', 'N') FROM T_INTEREST WHERE MEMBER_NO = A.TARGET_NO AND INTEREST_SE = 'C' AND TARGET_NO = A.MEMBER_NO) AS INTEREST_YN
+        FROM T_CHAT_ROOM A
+        JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO
+        LEFT JOIN (
+            SELECT T1.ROOM_NO, T1.MSG, T1.MSG_TYPE, T1.REGISTER_DT
+            FROM T_CHAT T1
+            INNER JOIN (
+                SELECT ROOM_NO, MAX(REGISTER_DT) AS LATEST_DATE
+                FROM T_CHAT
+                GROUP BY ROOM_NO
+            ) T2 ON T1.ROOM_NO = T2.ROOM_NO AND T1.REGISTER_DT = T2.LATEST_DATE
+        ) C ON A.ROOM_NO = C.ROOM_NO
+        LEFT JOIN (
+            SELECT ROOM_NO, COUNT(*) AS UNREAD_COUNT
+            FROM T_CHAT
+            WHERE READ_YN = 'N'
+                AND TO_NO = #{memberNo}
+            GROUP BY ROOM_NO
+        ) D ON A.ROOM_NO = D.ROOM_NO
+        LEFT JOIN T_MEMBER_SW E ON A.MEMBER_NO = E.MEMBER_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.TARGET_NO = #{memberNo}
+          AND A.MEMBER_SE = #{targetSe}
+        ORDER BY C.REGISTER_DT DESC, A.ROOM_NO DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectChatRoomListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CHAT_ROOM A
+        JOIN T_MEMBER_PROFILE B ON A.MEMBER_NO = B.MEMBER_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.TARGET_NO = #{memberNo}
+        AND A.MEMBER_SE = #{targetSe}
+    </select>
+
+    <update id="deleteChatRoom">
+        UPDATE T_CHAT_ROOM
+        SET   DELETED_AT = 'Y'
+            , DELETED_DT = NOW()
+        WHERE ROOM_NO IN
+        <foreach item="item" index="index" collection="roomNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+            AND MEMBER_NO = #{memberNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('A',memberSe)">
+            AND TARGET_NO = #{memberNo}
+        </if>
+    </update>
+
+    <select id="selectChatRoomDetail" resultType="com.dentner.core.cmmn.vo.ChatVo">
+        SELECT * FROM (
+              SELECT
+                  A.ROOM_NO, A.CHAT_NO, A.MSG, C.MEMBER_NICK_NAME, A.MSG_TYPE,
+                  DATE_FORMAT(A.REGISTER_DT, '%Y년%m월%d일') AS MESSAGE_DATE,
+                  CONCAT(
+                          CASE WHEN DATE_FORMAT(A.REGISTER_DT, '%p') = 'AM' THEN '오전 ' ELSE '오후 ' END,
+                          DATE_FORMAT(A.REGISTER_DT, '%l:%i')
+                  ) AS MESSAGE_TIME,
+                  A.READ_YN, A.FILE_URL, A.FILE_SIZE, A.FILE_NAME, A.FILE_REAL_NAME,
+                  CASE
+                      WHEN A.FROM_NO = B.TARGET_NO THEN 'me'
+                      WHEN A.TO_NO = B.MEMBER_NO THEN 'other'
+                      ELSE ''
+                      END AS POST_TYPE,
+                  A.REGISTER_DT
+              FROM T_CHAT A
+                       JOIN T_CHAT_ROOM B ON A.ROOM_NO = B.ROOM_NO
+                       JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO
+              WHERE A.ROOM_NO = #{roomNo}
+              ORDER BY A.REGISTER_DT DESC
+              LIMIT #{startRow}, #{pageCnt}
+          ) TB
+        ORDER BY REGISTER_DT ASC
+    </select>
+
+    <select id="selectChatRoomDetailCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CHAT A
+        JOIN T_CHAT_ROOM B ON A.ROOM_NO = B.ROOM_NO
+        JOIN T_MEMBER_PROFILE C ON B.MEMBER_NO = C.MEMBER_NO
+        WHERE A.ROOM_NO = #{roomNo}
+    </select>
+
+    <select id="selectChatRoomRequestDetail" resultType="com.dentner.core.cmmn.vo.ChatVo">
+        /*selectChatRoomRequestDetail 의뢰인 일때*/
+        SELECT * FROM (
+            SELECT
+                A.ROOM_NO, A.CHAT_NO, A.MSG, C.MEMBER_NICK_NAME, A.MSG_TYPE, DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{toNo}, A.REGISTER_DT), '%Y년%m월%d일') AS MESSAGE_DATE ,
+                CONCAT(CASE WHEN DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{toNo}, A.REGISTER_DT), '%p') = 'AM' THEN 'AM ' ELSE 'PM ' END, DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{toNo}, A.REGISTER_DT), '%l:%i')) AS MESSAGE_TIME,
+                A.READ_YN, A.FILE_URL, CASE WHEN A.FROM_NO = B.MEMBER_NO THEN 'me' WHEN A.TO_NO = B.TARGET_NO THEN 'other' ELSE '' END AS POST_TYPE,
+                A.FILE_SIZE, A.FILE_NAME, FN_GET_TIMEZONE_DATE(#{toNo}, A.REGISTER_DT) AS REGISTER_DT, A.FILE_REAL_NAME
+            FROM T_CHAT A
+            JOIN T_CHAT_ROOM B ON A.ROOM_NO = B.ROOM_NO
+            JOIN T_MEMBER_PROFILE C ON B.TARGET_NO = C.MEMBER_NO AND B.MEMBER_SE = C.MEMBER_SE
+            WHERE A.ROOM_NO = #{roomNo}
+            ORDER BY A.REGISTER_DT DESC
+            LIMIT #{startRow}, #{pageCnt}
+        ) TB
+        ORDER BY REGISTER_DT ASC
+    </select>
+
+    <select id="selectChatRoomRequestDetailCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CHAT A
+        JOIN T_CHAT_ROOM B ON A.ROOM_NO = B.ROOM_NO
+        JOIN T_MEMBER_PROFILE C ON B.TARGET_NO = C.MEMBER_NO AND B.MEMBER_SE = C.MEMBER_SE
+        WHERE A.ROOM_NO = #{roomNo}
+    </select>
+
+    <insert id="insertChat" useGeneratedKeys="true" keyProperty="chatNo">
+        INSERT INTO T_CHAT
+            (
+                  ROOM_NO
+                , FROM_NO
+                , TO_NO
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(msg)">
+                , MSG
+            </if>
+                , MSG_TYPE
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fileUrl)">
+                , FILE_URL
+                , FILE_SIZE
+                , FILE_NAME
+                , FILE_REAL_NAME
+            </if>
+            ) VALUES (
+                  #{roomNo}
+                , #{fromNo}
+                , #{toNo}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(msg)">
+                , #{msg}
+                </if>
+                , #{msgType}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fileUrl)">
+                , #{fileUrl}
+                , #{fileSize}
+                , #{fileName}
+                , #{fileRealName}
+                </if>
+            )
+    </insert>
+
+    <select id="selectChatUnreadCnt" resultType="int">
+        SELECT
+            COUNT(*) AS UNREAD_COUNT
+        FROM
+            T_CHAT
+        WHERE TO_NO = #{memberNo}
+          AND READ_YN = 'N'
+    </select>
+
+    <select id="selectRoomParticipants" resultType="int">
+        SELECT TO_NO AS MEMBER_TARGET_NO
+        FROM T_CHAT
+        WHERE CHAT_NO = #{chatNo}
+    </select>
+
+    <select id="selectRoomExist" resultType="int">
+        SELECT
+            IFNULL(ROOM_NO, 0) AS CNT
+        FROM
+            T_CHAT_ROOM
+        WHERE MEMBER_NO = #{memberNo}
+          AND TARGET_NO = #{targetNo}
+          AND MEMBER_SE = #{memberSe}
+          AND DELETED_AT = 'N'
+    </select>
+
+    <update id="updateChatReadYn">
+        UPDATE T_CHAT
+        SET   READ_YN = 'Y'
+        WHERE ROOM_NO = #{roomNo}
+          AND TO_NO = #{toNo}
+    </update>
+
+    <!-- 추가 -->
+    <select id="selectChatRoomRequestForRequest" resultType="com.dentner.core.cmmn.vo.ChatRoomVo">
+        SELECT
+            *
+        FROM T_CHAT_ROOM A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+          AND A.MEMBER_SE = #{targetSe}
+          AND A.TARGET_NO = #{targetNo}
+    </select>
+
+</mapper>

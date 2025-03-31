@@ -1,0 +1,1516 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.FrontTransactionMapper">
+    <select id="selectTransactionList" resultType="com.dentner.core.cmmn.vo.RequestFormVo">
+        /* selectTransactionList  의뢰인 거래내역 */
+        SELECT B.DELETED_AT AS MEMBER_OUT_AT,
+            FN_TARGET_AMOUNT2(A.REQUEST_FORM_NO) AS TARGET_AMOUNT,
+            FN_REQUEST_STATUS_NM(A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO) AS REQUEST_STATUS_NAME,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, A.REGISTER_DT) AS REGISTER_DT,
+            FN_REQUEST_DEAL_STATUS_NM(A.REQUEST_DEAL_STATUS) AS REQUEST_DEAL_STATUS_NAME,
+            A.REQUEST_DOC_GROUPS_NO, A.REQUEST_DEAL_STATUS, A.REQUEST_SW_NAME AS MEMBER_SW_NAME,
+            (SELECT COUNT(*) FROM T_REQUEST_ESTIMATE WHERE A.REQUEST_FORM_NO = REQUEST_FORM_NO) AS REQUEST_DOC_CNT,
+            A.REQUEST_FORM_NO, A.REQUEST_FORM_SJ, A.REQUEST_FORM_SE, A.REQUEST_SW, B.MEMBER_NO, A.REQUEST_DESIGNER_NO,
+            A.REQUEST_STATUS,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'C') AS MEMBER_NICK_NAME,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%Y.%m.%d') AS REQUEST_EXPIRE_DATE,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%H%i') AS REQUEST_EXPIRE_TIME,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%Y.%m.%d') AS REQUEST_DEADLINE_DATE,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%H%i') AS REQUEST_DEADLINE_TIME,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%H') AS REQUEST_EXPIRE_TIME_HOUR,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, '%i') AS REQUEST_EXPIRE_TIME_MIN,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%H') AS REQUEST_DEADLINE_TIME_HOUR,
+            FN_TIMEZONE_DATE_FORMAT(#{registerNo}, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, '%i') AS REQUEST_DEADLINE_TIME_MIN,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            (SELECT IF(COUNT(*) >0,'Y','N') FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO AND ADD_PAY_SE = 'N' ORDER BY REGISTER_DT LIMIT 1) AS PAY_STATUS,
+            (SELECT IF(COUNT(*) >0,'Y','N') FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO AND ADD_PAY_SE = 'Y' ORDER BY REGISTER_DT LIMIT 1) AS ADD_PAY_STATUS,
+            E.REQUEST_FORM_REMAKING_NO AS REQUEST_REMAKING_NO, FN_CODE_NM2(E.REMAKING_SE , 'NAME', #{language}) AS REQUEST_REMAKING_SE_NAME,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, E.REGISTER_DT) AS REQUEST_REMAKING_DT,
+            IF(A.REQUEST_FORM_SE = 'B', A.ESTIMATE_RECEIVE_YN, C.ESTIMATE_RECEIVE_YN) AS ESTIMATE_RECEIVE_YN,
+            IF(A.REQUEST_FORM_SE = 'B', A.ESTIMATE_3D_YN, C.ESTIMATE_3D_YN) AS ESTIMATE_3D_YN,
+            C.ESTIMATE_SE,  E.DELETED_AT AS REQUEST_REMAKING_DELETED_AT, D.DELETED_AT AS REQUEST_PAY_DELETED_AT,
+            D.REQUEST_FORM_PAY_NO, D.REQUEST_PAY_CN, C.ESTIMATE_AMOUNT, C.REQUEST_ESTIMATE_NO,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, D.REGISTER_DT) AS REQUEST_PAY_DT,
+            (SELECT IF(COUNT(*) > 0, 'Y','N') FROM T_REVIEW WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N') AS REVIEW_YN,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO) AS TOTAL_AMOUNT,
+            ABS(D.REQUEST_PAY_AMOUNT) AS ADD_AMOUNT,
+            (SELECT IF(COUNT(*) > 0, 'Y','N') FROM T_REQUEST_FORM_CANCEL WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N' AND REGISTER_NO = A.REGISTER_NO) AS CANCEL_REQUEST_YN,
+            IFNULL((SELECT IF(DELETED_DT = 'Y', 'N', IF(ADD_PAY_NO IS NOT NULL, 'Y', 'N')) FROM T_REQUEST_REMAKING WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO ORDER BY REQUEST_FORM_REMAKING_NO DESC LIMIT 1), 'N') AS REMAKING_ADD_YN,
+            (SELECT MEMBER_TP FROM T_MEMBER WHERE MEMBER_NO = A.REGISTER_NO ) AS MEMBER_TP
+        FROM T_REQUEST_FORM A
+        LEFT JOIN T_MEMBER B ON A.REQUEST_DESIGNER_NO = B.MEMBER_NO
+        LEFT JOIN T_REQUEST_ESTIMATE C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO AND C.ESTIMATE_SE = 'A'
+        LEFT JOIN (
+            SELECT T1.REQUEST_FORM_PAY_NO, T1.REQUEST_FORM_NO, T1.REQUEST_PAY_CN, T1.REGISTER_DT, T1.REQUEST_PAY_AMOUNT, T1.DELETED_AT
+            FROM T_REQUEST_FORM_PAY T1
+            INNER JOIN (
+            SELECT REQUEST_FORM_NO, MAX(REGISTER_DT) AS MAX_REGISTER_DT
+            FROM T_REQUEST_FORM_PAY
+            GROUP BY REQUEST_FORM_NO
+            ) T2 ON T1.REQUEST_FORM_NO = T2.REQUEST_FORM_NO AND T1.REGISTER_DT = T2.MAX_REGISTER_DT
+        ) D ON D.REQUEST_FORM_NO = A.REQUEST_FORM_NO
+        LEFT JOIN (
+            SELECT T1.REQUEST_FORM_REMAKING_NO, T1.REQUEST_FORM_NO, T1.REMAKING_SE, T1.REMAKING_DC, T1.REGISTER_DT, T1.DELETED_AT
+            FROM T_REQUEST_REMAKING T1
+            INNER JOIN (
+            SELECT REQUEST_FORM_NO, MAX(REGISTER_DT) AS MAX_REGISTER_DT
+            FROM T_REQUEST_REMAKING
+            GROUP BY REQUEST_FORM_NO
+            ) T2 ON T1.REQUEST_FORM_NO = T2.REQUEST_FORM_NO AND T1.REGISTER_DT = T2.MAX_REGISTER_DT
+        ) E ON E.REQUEST_FORM_NO = A.REQUEST_FORM_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.REGISTER_NO = #{registerNo}
+          AND A.REQUEST_HISTORY_AT = 'N'
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormSe)">
+                AND A.REQUEST_FORM_SE = #{requestFormSe}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+                <choose>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CE', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'E'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('EB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'E' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <otherwise>
+                        AND A.REQUEST_STATUS = #{statusFilter}
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+                AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormNo)">
+                AND A.REQUEST_FORM_NO = #{requestFormNo}
+            </if>
+            ORDER BY A.REGISTER_DT DESC
+            <if test="@com.dentner.core.util.MybatisUtils@isEmpty(requestFormNo)">
+                LIMIT #{startRow}, #{pageCnt}
+            </if>
+    </select>
+
+    <select id="selectTransactionListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT FROM(
+            SELECT
+                A.REQUEST_FORM_NO
+            FROM T_REQUEST_FORM A
+            WHERE A.DELETED_AT = 'N'
+              AND A.REGISTER_NO = #{registerNo}
+              AND A.REQUEST_HISTORY_AT = 'N'
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormSe)">
+                AND A.REQUEST_FORM_SE = #{requestFormSe}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+                <choose>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CE', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'E'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('EB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'E' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <otherwise>
+                        AND A.REQUEST_STATUS = #{statusFilter}
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+                AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            ) TB
+    </select>
+
+    <select id="selectTransactionDesignerList" resultType="com.dentner.core.cmmn.vo.RequestFormVo">
+        /* selectTransactionDesignerList  치자이너 거래내역 */
+        SELECT B.DELETED_AT AS MEMBER_OUT_AT,
+            FN_TARGET_AMOUNT2(A.REQUEST_FORM_NO) AS TARGET_AMOUNT,
+            FN_REQUEST_STATUS_NM(A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO) AS REQUEST_STATUS_NAME,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, A.REGISTER_DT) AS REGISTER_DT,
+            FN_REQUEST_DEAL_STATUS_NM(A.REQUEST_DEAL_STATUS) AS REQUEST_DEAL_STATUS_NAME,
+            A.REQUEST_DOC_GROUPS_NO, A.REQUEST_DEAL_STATUS, A.REQUEST_SW_NAME AS MEMBER_SW_NAME,
+            (SELECT COUNT(*) FROM T_REQUEST_ESTIMATE WHERE A.REQUEST_FORM_NO = REQUEST_FORM_NO) AS REQUEST_DOC_CNT,
+            A.REQUEST_FORM_NO, A.REQUEST_FORM_SJ, A.REQUEST_FORM_SE, A.REQUEST_SW, B.MEMBER_NO, A.REQUEST_DESIGNER_NO,
+            A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME, A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME, A.REQUEST_STATUS,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'A') AS MEMBER_NICK_NAME,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 1, 2) AS REQUEST_EXPIRE_TIME_HOUR,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 3, 2) AS REQUEST_EXPIRE_TIME_MIN,
+            SUBSTRING(A.REQUEST_DEADLINE_TIME, 1, 2) AS REQUEST_DEADLINE_TIME_HOUR,
+            SUBSTRING(A.REQUEST_DEADLINE_TIME, 3, 2) AS REQUEST_DEADLINE_TIME_MIN,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = B.MEMBER_NO AND DELETED_AT = 'N') AS MEMBER_PROFILE_IMAGE,
+            (SELECT IF(COUNT(*) >0,'Y','N') FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO AND ADD_PAY_SE = 'N' ORDER BY REGISTER_DT LIMIT 1) AS PAY_STATUS,
+            (SELECT IF(COUNT(*) >0,'Y','N') FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO AND ADD_PAY_SE = 'Y' ORDER BY REGISTER_DT LIMIT 1) AS ADD_PAY_STATUS,
+            E.REQUEST_FORM_REMAKING_NO AS REQUEST_REMAKING_NO, FN_CODE_NM2(E.REMAKING_SE , 'NAME', #{language}) AS REQUEST_REMAKING_SE_NAME,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, E.REGISTER_DT) AS REQUEST_REMAKING_DT,
+            IF(A.REQUEST_FORM_SE = 'B', A.ESTIMATE_RECEIVE_YN, C.ESTIMATE_RECEIVE_YN) AS ESTIMATE_RECEIVE_YN,
+            IF(A.REQUEST_FORM_SE = 'B', A.ESTIMATE_3D_YN, C.ESTIMATE_3D_YN) AS ESTIMATE_3D_YN,
+            C.ESTIMATE_SE,  E.DELETED_AT AS REQUEST_REMAKING_DELETED_AT, D.DELETED_AT AS REQUEST_PAY_DELETED_AT,
+            D.REQUEST_FORM_PAY_NO, D.REQUEST_PAY_CN, C.ESTIMATE_AMOUNT, C.REQUEST_ESTIMATE_NO,
+            FN_GET_TIMEZONE_DATE(#{registerNo}, D.REGISTER_DT) AS REQUEST_PAY_DT,
+            (SELECT IF(COUNT(*) > 0, 'Y','N') FROM T_REVIEW WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N') AS REVIEW_YN,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO) AS TOTAL_AMOUNT,
+            ABS(D.REQUEST_PAY_AMOUNT) AS ADD_AMOUNT,
+            (SELECT IF(COUNT(*) > 0, 'Y','N') FROM T_REQUEST_FORM_CANCEL WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N' AND REGISTER_NO = A.REQUEST_DESIGNER_NO) AS CANCEL_REQUEST_YN,
+            IFNULL((SELECT IF(DELETED_DT = 'Y', 'N', IF(ADD_PAY_NO IS NOT NULL, 'Y', 'N')) FROM T_REQUEST_REMAKING WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO ORDER BY REQUEST_FORM_REMAKING_NO DESC LIMIT 1), 'N') AS REMAKING_ADD_YN,
+            (SELECT MEMBER_TP FROM T_MEMBER WHERE MEMBER_NO = A.REGISTER_NO ) AS MEMBER_TP
+        FROM T_REQUEST_FORM A
+        LEFT JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_REQUEST_ESTIMATE C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO AND C.REGISTER_NO = #{registerNo} AND C.ESTIMATE_SHOW_YN = 'N'
+        LEFT JOIN (
+            SELECT T1.REQUEST_FORM_PAY_NO, T1.REQUEST_FORM_NO, T1.REQUEST_PAY_CN, T1.REGISTER_DT, T1.REQUEST_PAY_AMOUNT, T1.DELETED_AT
+            FROM T_REQUEST_FORM_PAY T1
+            INNER JOIN (
+            SELECT REQUEST_FORM_NO, MAX(REGISTER_DT) AS MAX_REGISTER_DT
+            FROM T_REQUEST_FORM_PAY
+            GROUP BY REQUEST_FORM_NO
+            ) T2 ON T1.REQUEST_FORM_NO = T2.REQUEST_FORM_NO AND T1.REGISTER_DT = T2.MAX_REGISTER_DT
+        ) D ON D.REQUEST_FORM_NO = A.REQUEST_FORM_NO
+        LEFT JOIN (
+            SELECT T1.REQUEST_FORM_REMAKING_NO, T1.REQUEST_FORM_NO, T1.REMAKING_SE, T1.REMAKING_DC, T1.REGISTER_DT, T1.DELETED_AT
+            FROM T_REQUEST_REMAKING T1
+            INNER JOIN (
+            SELECT REQUEST_FORM_NO, MAX(REGISTER_DT) AS MAX_REGISTER_DT
+            FROM T_REQUEST_REMAKING
+            GROUP BY REQUEST_FORM_NO
+            ) T2 ON T1.REQUEST_FORM_NO = T2.REQUEST_FORM_NO AND T1.REGISTER_DT = T2.MAX_REGISTER_DT
+        ) E ON E.REQUEST_FORM_NO = A.REQUEST_FORM_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.DESIGNER_HISTORY_AT = 'N'
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormSe)">
+                AND A.REQUEST_FORM_SE = #{requestFormSe}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+                <choose>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CE', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'E'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CG', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'G' AND A.REQUEST_FORM_SE = 'B'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('EB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'E' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <otherwise>
+                        AND A.REQUEST_STATUS = #{statusFilter}
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+                AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormNo)">
+                AND A.REQUEST_FORM_NO = #{requestFormNo}
+            </if>
+            AND (
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormSe)">
+                <if test="@com.dentner.core.util.MybatisUtils@equals('A', requestFormSe)">
+                    C.REGISTER_NO = #{registerNo}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@equals('B', requestFormSe)">
+                    A.REQUEST_DESIGNER_NO = #{registerNo}
+                </if>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isEmpty(requestFormSe)">
+                C.REGISTER_NO = #{registerNo}
+                OR A.REQUEST_DESIGNER_NO = #{registerNo}
+            </if>
+            )
+            GROUP BY A.REQUEST_FORM_NO
+            ORDER BY A.REGISTER_DT DESC
+            <if test="@com.dentner.core.util.MybatisUtils@isEmpty(requestFormNo)">
+                LIMIT #{startRow}, #{pageCnt}
+            </if>
+    </select>
+
+    <select id="selectTransactionDesignerListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT FROM(
+            SELECT
+                A.REQUEST_FORM_NO
+            FROM T_REQUEST_FORM A
+            LEFT JOIN T_REQUEST_ESTIMATE C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO AND C.REGISTER_NO = #{registerNo} AND C.ESTIMATE_SHOW_YN = 'N'
+        WHERE A.DELETED_AT = 'N'
+              AND A.DESIGNER_HISTORY_AT = 'N'
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormSe)">
+                AND A.REQUEST_FORM_SE = #{requestFormSe}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+                <choose>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CE', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'E'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('CG', statusFilter)">
+                        AND A.REQUEST_STATUS = 'C' AND A.REQUEST_DEAL_STATUS = 'G' AND A.REQUEST_FORM_SE = 'B'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('EB', statusFilter)">
+                        AND A.REQUEST_STATUS = 'E' AND A.REQUEST_DEAL_STATUS = 'B'
+                    </when>
+                    <otherwise>
+                        AND A.REQUEST_STATUS = #{statusFilter}
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+                AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            AND (
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(requestFormSe)">
+                <if test="@com.dentner.core.util.MybatisUtils@equals('A', requestFormSe)">
+                    C.REGISTER_NO = #{registerNo}
+                </if>
+                <if test="@com.dentner.core.util.MybatisUtils@equals('B', requestFormSe)">
+                    A.REQUEST_DESIGNER_NO = #{registerNo}
+                </if>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isEmpty(requestFormSe)">
+                C.REGISTER_NO = #{registerNo}
+                OR A.REQUEST_DESIGNER_NO = #{registerNo}
+            </if>
+            )
+            GROUP BY A.REQUEST_FORM_NO
+            ) TB
+    </select>
+
+    <select id="selectTransactionEstimateList" resultType="com.dentner.core.cmmn.vo.RequestEstimateVo">
+        SELECT
+            A.REQUEST_ESTIMATE_NO, C.MEMBER_DENTISTRY_NAME, D.ONE_INTRODUCTION, B.REQUEST_FORM_SE, C.MEMBER_NO, B.REQUEST_FORM_NO, E.SW_ETC, D.MEMBER_NICK_NAME,
+            (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_CNT,
+            (SELECT SUM(REVIEW_RATE) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') / (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_AVG,
+            D.MODIFY_CNT, D.MODIFY_WARRANTY_DAY,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'A' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.REGISTER_NO) AS WON_PRICE,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'B' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.REGISTER_NO) AS DOLLAR_PRICE,
+            F.PROSTHETICS_NAME, F.MEMBER_FIRST_VALUES, B.REQUEST_DESIGNER_NO,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, E.SW_NO)) AS MEMBER_SW_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = D.MEMBER_NO AND DELETED_AT = 'N') AS DESIGNER_PROFILE_IMAGE
+        FROM T_REQUEST_ESTIMATE A
+        JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+        JOIN T_MEMBER C ON A.REGISTER_NO = C.MEMBER_NO AND A.DELETED_AT = 'N'
+        JOIN T_MEMBER_PROFILE D ON C.MEMBER_NO  = D.MEMBER_NO AND D.MEMBER_SE = 'C'
+        LEFT JOIN T_MEMBER_SW E ON C.MEMBER_NO  = E.MEMBER_NO
+        LEFT JOIN (
+            SELECT MEMBER_NO,
+                   GROUP_CONCAT(DISTINCT FN_TEETH_NM(MEMBER_FIRST_VALUE)) AS PROSTHETICS_NAME,
+                   GROUP_CONCAT(DISTINCT MEMBER_FIRST_VALUE) AS MEMBER_FIRST_VALUES
+            FROM T_MEMBER_TYPE GROUP BY MEMBER_NO
+        ) F ON C.MEMBER_NO = F.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.ESTIMATE_SE = #{estimateSe}
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectTransactionEstimateListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REQUEST_ESTIMATE A
+        JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+        JOIN T_MEMBER C ON A.REGISTER_NO = C.MEMBER_NO AND A.DELETED_AT = 'N'
+        JOIN T_MEMBER_PROFILE D ON C.MEMBER_NO  = D.MEMBER_NO AND D.MEMBER_SE = 'C'
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.ESTIMATE_SE = #{estimateSe}
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <update id="updateEstimateAllCancel">
+        UPDATE T_REQUEST_ESTIMATE
+        SET ESTIMATE_SE = 'B'
+          , UPDATED_DT = NOW()
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <update id="updateEstimateChoice">
+        UPDATE T_REQUEST_ESTIMATE
+        SET ESTIMATE_SE = 'A'
+          , UPDATED_DT = NOW()
+          , ESTIMATE_DT = NOW()
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND REGISTER_NO = #{targetNo}
+    </update>
+
+    <update id="updateDesignerStatus">
+        UPDATE T_REQUEST_ESTIMATE
+        SET ESTIMATE_SHOW_YN = 'Y'
+        WHERE ESTIMATE_SE = 'B'
+          AND REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <update id="updateRequestStatus">
+        UPDATE T_REQUEST_FORM
+        SET REQUEST_STATUS = #{status}
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <select id="selectTransactionEstimateDetail" resultType="com.dentner.core.cmmn.vo.TransactionEstimateDetailVo">
+        /* selectTransactionEstimateDetail */
+        SELECT
+            C.MEMBER_DENTISTRY_NAME, D.ONE_INTRODUCTION, B.REQUEST_FORM_SE, C.MEMBER_NO, A.ESTIMATE_SE,
+            (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_CNT,
+            (SELECT SUM(REVIEW_RATE) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') / (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_AVG,
+            D.MODIFY_CNT, D.MODIFY_WARRANTY_DAY, E.SW_NO, E.SW_ETC, B.REQUEST_STATUS,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'A' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.REGISTER_NO) AS WON_PRICE,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'B' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.REGISTER_NO) AS DOLLAR_PRICE,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, E.SW_NO)) AS MEMBER_SW_NAME,
+            A.ESTIMATE_DATE, SUBSTRING(A.ESTIMATE_TIME, 1, 2) AS ESTIMATE_TIME_HOUR, SUBSTRING(A.ESTIMATE_TIME, 3, 2) AS ESTIMATE_TIME_MIN,
+            A.ESTIMATE_CN, A.ESTIMATE_AMOUNT, A.REQUEST_FORM_NO, A.REQUEST_ESTIMATE_NO,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = D.MEMBER_NO AND DELETED_AT = 'N') AS DESIGNER_PROFILE_IMAGE,
+            B.REQUEST_FORM_SJ, B.REQUEST_EXPIRE_DATE,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, B.REGISTER_DT) AS REGISTER_DT,
+            SUBSTRING(B.REQUEST_EXPIRE_TIME, 1, 2) AS REQUEST_EXPIRE_TIME_HOUR,
+            SUBSTRING(B.REQUEST_EXPIRE_TIME, 3, 2) AS REQUEST_EXPIRE_TIME_MIN,
+            B.REQUEST_SW, B.REQUEST_SW_NAME
+        FROM T_REQUEST_ESTIMATE A
+        JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+        JOIN T_MEMBER C ON A.REGISTER_NO = C.MEMBER_NO AND A.DELETED_AT = 'N'
+        LEFT JOIN T_MEMBER_PROFILE D ON C.MEMBER_NO  = D.MEMBER_NO AND D.MEMBER_SE = 'C'
+        LEFT JOIN T_MEMBER_SW E ON C.MEMBER_NO  = E.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_ESTIMATE_NO = #{requestEstimateNo}
+    </select>
+
+    <update id="updateRequestDealStatus">
+        UPDATE T_REQUEST_FORM
+        SET REQUEST_DEAL_STATUS = #{status}
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <update id="updateDesignerNo">
+        UPDATE T_REQUEST_FORM
+        SET REQUEST_DESIGNER_NO = #{targetNo}
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <select id="selectEstimateProstheticsList" resultType="map">
+        /* selectEstimateProstheticsList */
+        SELECT
+            B.TYPE_NAME AS requestTypeName , B.TYPE_CNT AS count , B.TYPE_AMOUNT  AS amount
+        FROM T_REQUEST_ESTIMATE A
+            JOIN T_REQUEST_ESTIMATE_TYPE B ON A.REQUEST_ESTIMATE_NO = B.REQUEST_ESTIMATE_NO
+        WHERE A.REQUEST_ESTIMATE_NO = #{requestEstimateNo}
+        ORDER BY B.TYPE_NAME
+    </select>
+
+    <select id="selectEstimateDocDesc" resultType="string">
+        /* selectEstimateDocDesc */
+        SELECT
+            GROUP_CONCAT(CONCAT(TYPE_NAME, ' ', total_count) ORDER BY TYPE_NAME SEPARATOR ' / ' ) AS requestDocDesc
+        FROM (
+                 SELECT
+                     summary.TYPE_NAME,
+                     SUM(summary.total_count) AS total_count
+                 FROM
+                     T_REQUEST_DOC_GROUP A
+                         JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, RF.REQUEST_DOC_GROUPS_NO) > 0
+                         JOIN T_REQUEST_ESTIMATE E ON E.REQUEST_FORM_NO = RF.REQUEST_FORM_NO
+                         LEFT JOIN (
+                         SELECT
+                             RD.REQUEST_DOC_GROUP_NO,
+                             COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                             SUM(RT.TYPE_COUNT) AS total_count
+                         FROM
+                             T_REQUEST_DOC RD
+                                 JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                                 JOIN (
+                                 SELECT DISTINCT
+                                     SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                                     RT.REQUEST_DOC_NO
+                                 FROM
+                                     T_REQUEST_TYPE RT
+                             ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                                 AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                                 LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                                 LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                                 LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                                 LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                         GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+                     ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+                 WHERE
+                     A.DELETED_AT = 'N'
+                   AND E.REQUEST_ESTIMATE_NO = #{requestEstimateNo}
+                 GROUP BY summary.TYPE_NAME
+             ) tb
+    </select>
+
+    <select id="selectTransactionPayment" resultType="com.dentner.core.cmmn.vo.TransactionPaymentVo">
+        SELECT
+            A.REQUEST_FORM_SE, A.REQUEST_FORM_SJ, A.REQUEST_EXPIRE_DATE, A.REQUEST_FORM_PAY_DC,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT) AS REGISTER_DT,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 1, 2) AS REQUEST_EXPIRE_TIME_HOUR,
+            SUBSTRING(A.REQUEST_EXPIRE_TIME, 3, 2) AS REQUEST_EXPIRE_TIME_MIN,
+            A.REQUEST_SW, A.REQUEST_SW_NAME,
+            FN_USER_NICKNM(A.REQUEST_DESIGNER_NO) AS MEMBER_NAME,
+            (SELECT ESTIMATE_AMOUNT FROM T_REQUEST_ESTIMATE WHERE REGISTER_NO = A.REQUEST_DESIGNER_NO AND REQUEST_FORM_NO = #{requestFormNo}) AS ESTIMATE_AMOUNT
+        FROM T_REQUEST_FORM A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER C ON A.REQUEST_DESIGNER_NO = C.MEMBER_NO
+        LEFT JOIN T_MEMBER_SW D ON B.MEMBER_NO  = D.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <select id="selectPaymentProstheticsList" resultType="map">
+        SELECT
+            B.TYPE_NAME AS requestTypeName , B.TYPE_CNT AS count , B.TYPE_AMOUNT  AS amount
+        FROM T_REQUEST_ESTIMATE A
+        JOIN T_REQUEST_ESTIMATE_TYPE B ON A.REQUEST_ESTIMATE_NO = B.REQUEST_ESTIMATE_NO
+        JOIN T_REQUEST_FORM C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO AND A.REGISTER_NO = C.REQUEST_DESIGNER_NO
+        WHERE C.REQUEST_FORM_NO = #{requestFormNo}
+        ORDER BY B.TYPE_NAME
+    </select>
+
+    <select id="selectPaymentDocDesc" resultType="string">
+        /* FrontTransactionMapper selectPaymentDocDesc 의뢰서 결제 조회 */
+        SELECT
+            GROUP_CONCAT(CONCAT(TYPE_NAME, ' ', total_count) ORDER BY TYPE_NAME SEPARATOR ' / ' ) AS requestDocDesc
+        FROM (
+                 SELECT
+                     summary.TYPE_NAME,
+                     SUM(summary.total_count) AS total_count
+                 FROM
+                     T_REQUEST_DOC_GROUP A
+                         JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, RF.REQUEST_DOC_GROUPS_NO) > 0
+                         LEFT JOIN (
+                         SELECT
+                             RD.REQUEST_DOC_GROUP_NO,
+                             COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                             SUM(RT.TYPE_COUNT) AS total_count
+                         FROM
+                             T_REQUEST_DOC RD
+                                 JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                                 JOIN (
+                                 SELECT DISTINCT
+                                     SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                                     RT.REQUEST_DOC_NO
+                                 FROM
+                                     T_REQUEST_TYPE RT
+                             ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                                 AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                                 LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                                 LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                                 LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                                 LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                         GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+                     ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+                 WHERE
+                     A.DELETED_AT = 'N'
+                   AND RF.REQUEST_FORM_NO = #{requestFormNo}
+                 GROUP BY summary.TYPE_NAME
+             ) tb
+    </select>
+
+    <select id="selectTransactionDoc" resultType="map">
+        /* selectTransactionDoc */
+        SELECT
+            DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT), '%Y.%m.%d %h:%i') AS registerDt,
+            A.REQUEST_DOC_GROUP_NO AS requestDocgroupNo,
+            A.REQUEST_NUMBER AS requestNumber,
+            (SELECT
+                 CASE
+                     WHEN COUNT(*) = 0 THEN NULL
+                     WHEN COUNT(*) = 1 THEN
+                         CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+                     WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+                     WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+                     WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+                     WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+                     WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+                     END
+             FROM T_REQUEST_DOC
+             WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+               AND DELETED_AT = 'N') AS requestDocName,
+            GROUP_CONCAT(
+                    CONCAT(summary.TYPE_NAME, ' ', summary.type_count)
+                        ORDER BY summary.TYPE_NAME
+        SEPARATOR ' / '
+            ) AS requestDocDesc, A.REQUEST_SE AS requestSe
+        FROM
+            T_REQUEST_DOC_GROUP A
+                JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+                LEFT JOIN (
+                SELECT
+                    RD.REQUEST_DOC_GROUP_NO,
+                    COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                    SUM(RT.TYPE_COUNT) AS type_count
+                FROM
+                    T_REQUEST_DOC RD
+                        JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                        JOIN (
+                        SELECT DISTINCT
+                            SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                            RT.REQUEST_DOC_NO
+                        FROM
+                            T_REQUEST_TYPE RT
+                    ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                        AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                        LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                        LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                        LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                        LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+            ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+        WHERE A.DELETED_AT = 'N'
+          AND RF.REQUEST_FORM_NO = #{requestFormNo}
+          AND RF.REQUEST_DESIGNER_NO = #{memberNo}
+        GROUP BY A.REQUEST_NUMBER, A.REQUEST_DOC_GROUP_NO, A.REGISTER_DT
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectTransactionContract" resultType="map">
+        /* selectTransactionContract */
+        SELECT
+            DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT), '%Y.%m.%d %h:%i') AS registerDt,
+            RF.REQUEST_FORM_NO AS requestFormNo,
+            A.REQUEST_DOC_GROUP_NO AS requestDocgroupNo,
+            RF.REQUEST_FORM_SJ AS requestFormSj,
+            RF.REQUEST_FORM_DC AS requestFormDc,
+            RF.REQUEST_SW_NAME AS requestSwName,
+            RF.REQUEST_FORM_PAY_DC AS requestFormPayDc,
+            FN_USER_NICKNM(RF.REGISTER_NO) AS memberNickName,
+            RF.REQUEST_DEAL_STATUS AS requestDealStatus,
+            RF.REQUEST_STATUS AS requestStatus,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = RF.REGISTER_NO AND DELETED_AT = 'N') AS memberProfileImage,
+            (SELECT
+                 CASE
+                     WHEN COUNT(*) = 0 THEN NULL
+                     WHEN COUNT(*) = 1 THEN
+                         CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+                     WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+                     WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+                     WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+                     WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+                     WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+                     END
+             FROM T_REQUEST_DOC
+             WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+               AND DELETED_AT = 'N') AS requestDocName,
+            (SELECT IF(COUNT(*) >0,'Y','N') FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = RF.REQUEST_FORM_NO AND REGISTER_NO = RF.REGISTER_NO AND ADD_PAY_SE = 'N' ORDER BY REGISTER_DT LIMIT 1) AS payStatus
+        FROM
+            T_REQUEST_DOC_GROUP A
+            JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        WHERE A.DELETED_AT = 'N'
+          AND RF.REQUEST_FORM_NO = #{requestFormNo}
+          AND RF.REQUEST_DESIGNER_NO = #{memberNo}
+        GROUP BY RF.REQUEST_FORM_NO
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectTransactionDocDetail" resultType="com.dentner.core.cmmn.vo.RequestDocVo">
+        SELECT
+            A.REQUEST_NUMBER , B.REQUEST_PROCESS_NO, B.REQUEST_PROCESS_ETC_NAME, B.REQUEST_DC, B.REQUEST_DOC_NO,
+            IF(FN_CODE_NM(B.REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(B.REQUEST_PROCESS_NO, 'NAME')) AS REQUEST_PROCESS_NAME,
+            C.SW_NO, C.SW_ETC, A.REQUEST_SE, A.SAVE_AT, A.REGISTER_NO,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, C.SW_NO)) AS SW_NAME,
+            (SELECT IF(COUNT(*)>0,'Y','N') FROM T_REQUEST_FORM WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0 AND REQUEST_STATUS NOT IN ('E', 'G', 'H')) AS REQUEST_YN
+        FROM T_REQUEST_DOC_GROUP A
+        JOIN T_REQUEST_DOC B ON A.REQUEST_DOC_GROUP_NO  = B.REQUEST_DOC_GROUP_NO
+        LEFT JOIN T_MEMBER_SW C ON A.REGISTER_NO = C.MEMBER_NO
+        WHERE A.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+            AND A.REGISTER_NO = #{memberNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe)">
+            AND EXISTS (
+                SELECT 1
+                FROM T_REQUEST_FORM
+                WHERE FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+                AND (REQUEST_DESIGNER_NO = #{memberNo} OR REGISTER_NO = #{memberNo})
+            )
+        </if>
+    </select>
+
+    <select id="selectDocProstheticsList" resultType="map">
+        SELECT
+            A.REQUEST_TYPE_NAME AS requestTypeName, SUM(A.TYPE_COUNT) AS count
+        FROM T_REQUEST_TYPE A
+            JOIN T_REQUEST_DOC RD ON A.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+            JOIN T_REQUEST_DOC_GROUP RDG ON RD.REQUEST_DOC_GROUP_NO = RDG.REQUEST_DOC_GROUP_NO
+        WHERE RD.REQUEST_DOC_NO = #{requestDocNo}
+        GROUP BY REQUEST_TYPE_NAME
+        ORDER BY REQUEST_TYPE_NO
+    </select>
+
+    <insert id="insertTransactionAddPay" useGeneratedKeys="true" keyProperty="requestFormPayNo">
+        INSERT INTO T_REQUEST_FORM_PAY
+        (
+          REQUEST_FORM_NO
+        , REQUEST_PAY_SE
+        , REQUEST_PAY_UNIT
+        , REQUEST_PAY_AMOUNT
+        , REQUEST_PAY_CN
+        , REGISTER_NO
+        ) VALUES (
+                   #{requestFormNo}
+                 , #{requestPaySe}
+                 , #{requestPayUnit}
+                 , #{requestPayAmount}
+                 , #{requestPayCn}
+                 , #{registerNo}
+                 )
+    </insert>
+
+    <select id="selectTransactionEstimateDetailDesigner" resultType="com.dentner.core.cmmn.vo.TransactionEstimateDetailVo">
+        SELECT
+            C.MEMBER_DENTISTRY_NAME, D.ONE_INTRODUCTION, B.REQUEST_FORM_SE, C.MEMBER_NO,
+            (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_CNT,
+            (SELECT SUM(REVIEW_RATE) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') / (SELECT COUNT(*) FROM T_REVIEW WHERE TARGET_NO = C.MEMBER_NO AND DELETED_AT = 'N') AS REVIEW_AVG,
+            D.MODIFY_CNT, D.MODIFY_WARRANTY_DAY, E.SW_NO, E.SW_ETC,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'A' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.REGISTER_NO) AS WON_PRICE,
+            (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE M JOIN T_REQUEST_FORM R ON M.REQUEST_FORM_NO = R.REQUEST_FORM_NO WHERE M.MILEAGE_SE = 'B' AND M.DELETED_AT = 'N' AND M.MILEAGE_UNIT = 'B' AND R.REQUEST_STATUS IN ('D') AND R.REQUEST_DESIGNER_NO = A.REGISTER_NO) AS DOLLAR_PRICE,
+            (SELECT GROUP_CONCAT(CONCAT(CODE_NAME,'', IFNULL(CODE_DESC,''))) FROM T_CODE WHERE CODE_NO NOT IN(754) AND FIND_IN_SET(CODE_NO, E.SW_NO)) AS MEMBER_SW_NAME,
+            A.ESTIMATE_DATE, SUBSTRING(A.ESTIMATE_TIME, 1, 2) AS ESTIMATE_TIME_HOUR, SUBSTRING(A.ESTIMATE_TIME, 3, 2) AS ESTIMATE_TIME_MIN,
+            A.ESTIMATE_CN, A.ESTIMATE_AMOUNT, A.REQUEST_FORM_NO, A.REQUEST_ESTIMATE_NO,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = D.MEMBER_NO AND DELETED_AT = 'N') AS DESIGNER_PROFILE_IMAGE,
+            B.REQUEST_FORM_SJ, B.REQUEST_EXPIRE_DATE, A.ESTIMATE_DATE, A.ESTIMATE_TIME,
+            FN_GET_TIMEZONE_DATE(#{memberNo}, B.REGISTER_DT) AS REGISTER_DT,
+            SUBSTRING(B.REQUEST_EXPIRE_TIME, 1, 2) AS REQUEST_EXPIRE_TIME_HOUR, SUBSTRING(B.REQUEST_EXPIRE_TIME, 3, 2) AS REQUEST_EXPIRE_TIME_MIN, B.REQUEST_SW, B.REQUEST_SW_NAME,
+            SUBSTRING(A.ESTIMATE_TIME, 1, 2) AS ESTIMATE_TIME_HOUR, SUBSTRING(A.ESTIMATE_TIME, 3, 2) AS ESTIMATE_TIME_MIN
+        FROM T_REQUEST_ESTIMATE A
+                 JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+                 JOIN T_MEMBER C ON A.REGISTER_NO = C.MEMBER_NO AND A.DELETED_AT = 'N'
+                 LEFT JOIN T_MEMBER_PROFILE D ON C.MEMBER_NO  = D.MEMBER_NO AND D.MEMBER_SE = 'C'
+                 LEFT JOIN T_MEMBER_SW E ON C.MEMBER_NO  = E.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND B.REQUEST_FORM_NO = #{requestFormNo}
+          AND A.REGISTER_NO = #{memberNo}
+    </select>
+
+    <select id="selectEstimateDesignerProstheticsList" resultType="map">
+        /* selectEstimateDesignerProstheticsList */
+        SELECT
+            B.TYPE_NAME AS requestTypeName , B.TYPE_CNT AS count , B.TYPE_AMOUNT  AS amount,
+            B.TYPE_UNIT AS unit
+        FROM T_REQUEST_ESTIMATE A
+            JOIN T_REQUEST_ESTIMATE_TYPE B ON A.REQUEST_ESTIMATE_NO = B.REQUEST_ESTIMATE_NO
+            JOIN T_REQUEST_FORM C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO
+        WHERE C.REQUEST_FORM_NO = #{requestFormNo}
+          AND A.REGISTER_NO = #{memberNo}
+        ORDER BY B.TYPE_NAME
+    </select>
+
+    <select id="selectEstimateDesignerDocDesc" resultType="string">
+        /* selectEstimateDesignerDocDesc */
+        SELECT
+            GROUP_CONCAT(CONCAT(TYPE_NAME, ' ', total_count) ORDER BY TYPE_NAME SEPARATOR ' / ' ) AS requestDocDesc
+        FROM (
+                 SELECT
+                     summary.TYPE_NAME,
+                     SUM(summary.total_count) AS total_count
+                 FROM
+                     T_REQUEST_DOC_GROUP A
+                         JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, RF.REQUEST_DOC_GROUPS_NO) > 0
+                         JOIN T_REQUEST_ESTIMATE E ON E.REQUEST_FORM_NO = RF.REQUEST_FORM_NO
+                         LEFT JOIN (
+                         SELECT
+                             RD.REQUEST_DOC_GROUP_NO,
+                             COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+                             SUM(RT.TYPE_COUNT) AS total_count
+                         FROM
+                             T_REQUEST_DOC RD
+                                 JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+                                 JOIN (
+                                 SELECT DISTINCT
+                                     SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+                                     RT.REQUEST_DOC_NO
+                                 FROM
+                                     T_REQUEST_TYPE RT
+                             ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+                                 AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+                                 LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+                                 LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+                                 LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+                                 LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+                         GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+                     ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+                 WHERE
+                     A.DELETED_AT = 'N'
+                   AND RF.REQUEST_FORM_NO = #{requestFormNo}
+                   AND E.REGISTER_NO = #{memberNo}
+                 GROUP BY summary.TYPE_NAME
+             ) tb
+    </select>
+
+    <insert id="insertTransactionPay">
+        INSERT INTO T_MILEAGE
+        (
+          MILEAGE_SE
+        , MILEAGE_AMOUNT
+        , MILEAGE_UNIT
+        , MILEAGE_CN
+        , REQUEST_FORM_NO
+        , ADD_PAY_SE
+        , ADD_PAY_NO
+        , REGISTER_NO
+        ) VALUES (
+                   #{mileageSe}
+                 , #{mileageAmount}
+                 , #{mileageUnit}
+                 , #{mileageCn}
+                 , #{requestFormNo}
+                 , #{addPaySe}
+                 , (SELECT MAX(REQUEST_FORM_PAY_NO) FROM T_REQUEST_FORM_PAY WHERE REQUEST_FORM_NO = #{requestFormNo})
+                 , #{registerNo}
+                 )
+    </insert>
+
+    <update id="updateRequestFormDc">
+        UPDATE T_REQUEST_FORM
+        SET REQUEST_FORM_PAY_DC = #{requestFormPayDc}
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{registerNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <insert id="insertTransactionRefuse">
+        INSERT INTO T_REQUEST_FORM_REFUSE
+        (
+          REQUEST_FORM_NO
+        , REQUEST_REFUSE_CN
+        , REGISTER_NO
+        ) VALUES (
+                   #{requestFormNo}
+                 , #{requestRefuseCn}
+                 , #{registerNo}
+                 )
+    </insert>
+
+    <update id="updateTransactionAddPay">
+        UPDATE T_REQUEST_FORM_PAY
+        SET
+            REQUEST_PAY_SE = #{requestPaySe}
+          , REQUEST_PAY_UNIT = #{requestPayUnit}
+          , REQUEST_PAY_AMOUNT = #{requestPayAmount}
+          , REQUEST_PAY_CN = #{requestPayCn}
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{registerNo}
+        WHERE REQUEST_FORM_PAY_NO = #{requestFormPayNo}
+    </update>
+
+    <update id="updateTransactionDocReceive">
+        UPDATE T_REQUEST_ESTIMATE
+        SET
+            ESTIMATE_RECEIVE_YN = 'Y'
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND REGISTER_NO = #{memberNo}
+    </update>
+
+    <select id="selectTransactionAddPay" resultType="com.dentner.core.cmmn.vo.RequestAddPayVo">
+        SELECT
+            A.REQUEST_FORM_PAY_NO, A.REQUEST_FORM_NO, A.REQUEST_PAY_SE, A.REQUEST_PAY_UNIT, A.REQUEST_PAY_AMOUNT, A.REQUEST_PAY_CN, A.REGISTER_NO,
+            (SELECT IF(COUNT(*)>0, 'Y', 'N') FROM T_MILEAGE WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND ADD_PAY_SE = 'Y' AND DELETED_AT = 'N') AS ADD_PAY_YN,
+            FN_USER_NICKNM((SELECT RF.REQUEST_DESIGNER_NO FROM T_REQUEST_FORM RF WHERE RF.REQUEST_FORM_NO = A.REQUEST_FORM_NO)) AS NICK_NM
+        FROM T_REQUEST_FORM_PAY A
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+          AND A.DELETED_AT = 'N'
+        ORDER BY A.REGISTER_DT DESC
+            LIMIT 1;
+    </select>
+
+    <insert id="insertTransactionRemaking" useGeneratedKeys="true" keyProperty="requestFormRemakingNo">
+        INSERT INTO T_REQUEST_REMAKING
+        (
+          REQUEST_FORM_NO
+        , REMAKING_SE
+        , REMAKING_DC
+        , REGISTER_NO
+        ) VALUES (
+                   #{requestFormNo}
+                 , #{remakingSe}
+                 , #{remakingDc}
+                 , #{registerNo}
+                 )
+    </insert>
+
+    <select id="selectTransactionRemaking" resultType="com.dentner.core.cmmn.vo.RequestRemakingVo">
+        SELECT
+            REQUEST_FORM_REMAKING_NO, REQUEST_FORM_NO, REMAKING_SE, REMAKING_DC, REGISTER_NO,
+            FN_CODE_NM(REMAKING_SE, 'NAME') AS REMAKING_SE_NAME
+        FROM T_REQUEST_REMAKING
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND DELETED_AT = 'N'
+        ORDER BY REGISTER_DT DESC
+            LIMIT 1;
+    </select>
+
+    <update id="updateRequest3dNext">
+        UPDATE T_REQUEST_ESTIMATE
+        SET
+            ESTIMATE_3D_YN = 'Y'
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND REGISTER_NO = #{memberNo}
+    </update>
+
+    <select id="selectTransactionCadFile" resultType="com.dentner.core.cmmn.vo.RequestCadFileVo">
+        /* selectTransactionCadFile */
+        SELECT
+        DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT), '%Y.%m.%d %h:%i') AS REGISTER_DT,
+        A.REQUEST_DOC_GROUP_NO,
+        A.REQUEST_NUMBER,
+        RF.REQUEST_STATUS,
+        RF.REQUEST_DEAL_STATUS,
+        (SELECT
+        CASE
+        WHEN COUNT(*) = 0 THEN NULL
+        WHEN COUNT(*) = 1 THEN
+        CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+        WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+        WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+        WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+        WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+        WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+        END
+        FROM T_REQUEST_DOC
+        WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+        AND DELETED_AT = 'N') AS REQUEST_DOC_NAME,
+        GROUP_CONCAT(
+        CONCAT(summary.TYPE_NAME, ' ', summary.type_count)
+        ORDER BY summary.TYPE_NAME SEPARATOR ' / '
+        ) AS REQUEST_DOC_DESC,
+        F.FILE_URL AS CAD_FILE, F.FILE_REAL_NAME AS CAD_REAL_NAME, F.FILE_SIZE AS CAD_FILE_SIZE, F.FILE_NO AS CAD_FILE_NO,
+        (SELECT IF(COUNT(*) > 0, 'Y', 'N')
+        FROM T_MILEAGE TM
+        JOIN T_REQUEST_FORM_PAY TRF ON TM.ADD_PAY_NO = TRF.REQUEST_FORM_PAY_NO AND TM.REQUEST_FORM_NO = TRF.REQUEST_FORM_NO
+        WHERE TRF.REQUEST_FORM_NO = RF.REQUEST_FORM_NO
+        AND TRF.REQUEST_FORM_PAY_NO = (
+        SELECT MAX(TRF2.REQUEST_FORM_PAY_NO)
+        FROM T_REQUEST_FORM_PAY TRF2
+        WHERE TRF2.REQUEST_FORM_NO = TRF.REQUEST_FORM_NO
+        )
+        ) AS ADD_PAY_STATUS
+        FROM
+        T_REQUEST_DOC_GROUP A
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        LEFT JOIN (
+        SELECT F1.*
+        FROM T_FILE F1
+        JOIN (
+        SELECT FILE_FROM_NO, MAX(REGISTER_DT) AS MAX_REGISTER_DT
+        FROM T_FILE
+        WHERE FILE_SE = 'J'
+        AND DELETED_AT = 'N'
+        GROUP BY FILE_FROM_NO
+        ) F2 ON F1.FILE_FROM_NO = F2.FILE_FROM_NO AND F1.REGISTER_DT = F2.MAX_REGISTER_DT AND F1.FILE_SE = 'J' AND F1.DELETED_AT = 'N'
+        ) F ON F.FILE_FROM_NO = A.REQUEST_DOC_GROUP_NO
+        LEFT JOIN (
+        SELECT
+        RD.REQUEST_DOC_GROUP_NO,
+        COALESCE(t1.TYPE_NAME, t2.TYPE_NAME, t3.TYPE_NAME, t4.TYPE_NAME) AS TYPE_NAME,
+        SUM(RT.TYPE_COUNT) AS type_count
+        FROM
+        T_REQUEST_DOC RD
+        JOIN T_REQUEST_TYPE RT ON RT.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+        JOIN (
+        SELECT DISTINCT
+        SUBSTRING_INDEX(RT.REQUEST_TYPE_VALUE, ',', 1) AS first_code,
+        RT.REQUEST_DOC_NO
+        FROM
+        T_REQUEST_TYPE RT
+        ) AS distinct_codes ON FIND_IN_SET(distinct_codes.first_code, RT.REQUEST_TYPE_VALUE) > 0
+        AND distinct_codes.REQUEST_DOC_NO = RT.REQUEST_DOC_NO
+        LEFT JOIN T_TEETH_TYPE t4 ON t4.TEETH_TYPE_NO = distinct_codes.first_code
+        LEFT JOIN T_TEETH_TYPE t3 ON t3.TEETH_TYPE_NO = t4.PARENT_TYPE_NO
+        LEFT JOIN T_TEETH_TYPE t2 ON t2.TEETH_TYPE_NO = t3.PARENT_TYPE_NO
+        LEFT JOIN T_TEETH_TYPE t1 ON t1.TEETH_TYPE_NO = t2.PARENT_TYPE_NO
+        GROUP BY RD.REQUEST_DOC_GROUP_NO, TYPE_NAME
+        ) AS summary ON A.REQUEST_DOC_GROUP_NO = summary.REQUEST_DOC_GROUP_NO
+        WHERE A.DELETED_AT = 'N'
+        AND RF.REQUEST_FORM_NO = #{requestFormNo}
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+            AND RF.REGISTER_NO = #{memberNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe)">
+            AND RF.REQUEST_DESIGNER_NO = #{memberNo}
+        </if>
+        GROUP BY A.REQUEST_DOC_GROUP_NO
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <insert id="insertReview" useGeneratedKeys="true" keyProperty="reviewNo">
+        INSERT INTO T_REVIEW
+        (
+          REVIEW_RATE
+        , TARGET_NO
+        , MEMBER_NO
+        , REQUEST_FORM_NO
+        , REVIEW_CN
+        ) VALUES (
+                   #{reviewRate}
+                 , #{targetNo}
+                 , #{memberNo}
+                 , #{requestFormNo}
+                 , #{reviewCn}
+                 )
+    </insert>
+
+    <select id="selectTransactionFormAddPay" resultType="map">
+        /* selectTransactionFormAddPay */
+        SELECT
+        DATE_FORMAT(FN_GET_TIMEZONE_DATE(#{memberNo}, A.REGISTER_DT), '%Y.%m.%d %h:%i') AS registerDt,
+        RF.REQUEST_FORM_NO AS requestFormNo,
+        A.REQUEST_DOC_GROUP_NO AS requestDocgroupNo,
+        RF.REQUEST_FORM_SJ AS requestFormSj,
+        RF.REQUEST_FORM_DC AS requestFormDc,
+        RF.REQUEST_SW_NAME AS requestSwName,
+        RF.REQUEST_FORM_PAY_DC AS requestFormPayDc,
+        FN_USER_NICKNM(RF.REGISTER_NO) AS memberNickName,
+        FN_USER_NM(RF.REGISTER_NO) AS memberName,
+        (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = RF.REGISTER_NO AND DELETED_AT = 'N') AS memberProfileImage,
+        (SELECT
+        CASE
+        WHEN COUNT(*) = 0 THEN NULL
+        WHEN COUNT(*) = 1 THEN
+        CASE WHEN A.REQUEST_SE = 'A' THEN IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) ELSE '의뢰서a' END
+        WHEN COUNT(*) = 2 THEN '의뢰서a,b'
+        WHEN COUNT(*) = 3 THEN '의뢰서a,b,c'
+        WHEN COUNT(*) = 4 THEN '의뢰서a,b,c,d'
+        WHEN COUNT(*) = 5 THEN '의뢰서a,b,c,d,e'
+        WHEN COUNT(*) = 6 THEN '의뢰서a,b,c,d,e,f'
+        END
+        FROM T_REQUEST_DOC
+        WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+        AND DELETED_AT = 'N') AS requestDocName
+        FROM
+        T_REQUEST_DOC_GROUP A
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        WHERE A.DELETED_AT = 'N'
+        AND RF.REQUEST_FORM_NO = #{requestFormNo}
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+            AND RF.REGISTER_NO = #{memberNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe)">
+            AND RF.REQUEST_DESIGNER_NO = #{memberNo}
+        </if>
+        GROUP BY RF.REQUEST_FORM_NO
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectTransactionMileage" resultType="int">
+        /* selectTransactionMileage */
+        SELECT
+            SUM(CASE
+                WHEN B.MEMBER_TP = 'A' AND A.MILEAGE_UNIT = 'A' THEN A.MILEAGE_AMOUNT
+                WHEN B.MEMBER_TP = 'B' AND A.MILEAGE_UNIT = 'B' THEN A.MILEAGE_AMOUNT
+                ELSE 0
+            END) AS TOTAL_MILEAGE
+        FROM T_MILEAGE A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        WHERE A.DELETED_AT = 'N'
+          AND A.REGISTER_NO = #{memberNo}
+    </select>
+
+    <update id="deleteTransactionAddPay">
+        UPDATE T_REQUEST_FORM_PAY
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND REGISTER_NO = #{memberNo}
+    </update>
+
+    <update id="deleteTransactionRemaking">
+        UPDATE T_REQUEST_REMAKING
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND REGISTER_NO = #{memberNo}
+    </update>
+
+    <select id="selectTransactionStat" resultType="com.dentner.core.cmmn.vo.TransactionStatVo">
+        SELECT
+            (SELECT
+                 COUNT(*) AS CNT
+             FROM T_REQUEST_FORM A
+            JOIN T_MILEAGE B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO AND ADD_PAY_SE  = 'N' AND B.DELETED_AT  = 'N'
+             WHERE A.REQUEST_DESIGNER_NO = #{memberNo}
+               AND A.DELETED_AT = 'N'
+               AND A.REQUEST_STATUS NOT IN ('E','F','G','H' )
+               AND B.MILEAGE_SE ='B') AS REQUEST_TOTAL_CNT,
+            (SELECT COUNT(*)
+             FROM T_REQUEST_ESTIMATE
+             WHERE REGISTER_NO = #{memberNo}
+               AND DELETED_AT = 'N') AS REQUEST_CNT,
+            (SELECT COUNT(*)
+             FROM T_REQUEST_FORM
+             WHERE REQUEST_DESIGNER_NO = #{memberNo}
+               AND DELETED_AT = 'N'
+               AND REQUEST_STATUS = 'C'
+               AND REQUEST_DEAL_STATUS IN('C','D')) AS REQUEST_ING_CNT,
+            (SELECT COUNT(*)
+             FROM T_REQUEST_FORM
+             WHERE REQUEST_DESIGNER_NO = #{memberNo}
+               AND DELETED_AT = 'N'
+               AND REQUEST_DEAL_STATUS IN('E','F','G','H')) AS REQUEST_END_CNT,
+            (SELECT COUNT(*)
+             FROM T_REQUEST_FORM
+             WHERE REQUEST_DESIGNER_NO = #{memberNo}
+               AND DELETED_AT = 'N'
+               AND REQUEST_DEAL_STATUS IN('C','D')
+               AND STR_TO_DATE(CONCAT(REQUEST_DEADLINE_DATE, ' ', SUBSTRING(REQUEST_DEADLINE_TIME, 1, 2), ':', SUBSTRING(REQUEST_DEADLINE_TIME, 3, 2), ':00'), '%Y.%m.%d %H:%i:%s')
+                 BETWEEN NOW() AND DATE_ADD(NOW(), INTERVAL 1 HOUR)) AS END1_HOUR_CNT,
+            (SELECT COUNT(*)
+             FROM T_REQUEST_FORM
+             WHERE REQUEST_DESIGNER_NO = #{memberNo}
+               AND DELETED_AT = 'N'
+               AND REQUEST_DEAL_STATUS IN('C','D')
+               AND STR_TO_DATE(CONCAT(REQUEST_DEADLINE_DATE, ' ', SUBSTRING(REQUEST_DEADLINE_TIME, 1, 2), ':', SUBSTRING(REQUEST_DEADLINE_TIME, 3, 2), ':00'), '%Y.%m.%d %H:%i:%s')
+                 BETWEEN DATE_ADD(NOW(), INTERVAL 1 HOUR) AND DATE_ADD(NOW(), INTERVAL 3 HOUR)) AS END3_HOUR_CNT,
+            (SELECT COUNT(*)
+             FROM T_REQUEST_FORM
+             WHERE REQUEST_DESIGNER_NO = #{memberNo}
+               AND DELETED_AT = 'N'
+               AND REQUEST_DEAL_STATUS IN('C','D')
+               AND STR_TO_DATE(CONCAT(REQUEST_DEADLINE_DATE, ' ', SUBSTRING(REQUEST_DEADLINE_TIME, 1, 2), ':', SUBSTRING(REQUEST_DEADLINE_TIME, 3, 2), ':00'), '%Y.%m.%d %H:%i:%s')
+                 BETWEEN DATE_ADD(NOW(), INTERVAL 3 HOUR) AND DATE_ADD(NOW(), INTERVAL 6 HOUR)) AS END6_HOUR_CNT,
+            (SELECT COUNT(*)
+             FROM T_REQUEST_FORM
+             WHERE REQUEST_DESIGNER_NO = #{memberNo}
+               AND DELETED_AT = 'N'
+               AND REQUEST_DEAL_STATUS IN('C','D')
+               AND STR_TO_DATE(CONCAT(REQUEST_DEADLINE_DATE, ' ', SUBSTRING(REQUEST_DEADLINE_TIME, 1, 2), ':', SUBSTRING(REQUEST_DEADLINE_TIME, 3, 2), ':00'), '%Y.%m.%d %H:%i:%s')
+                 > DATE_ADD(NOW(), INTERVAL 6 HOUR)) AS END6_HOUR_AFTER_CNT
+    </select>
+
+    <select id="selectRequestApproval" resultType="com.dentner.core.cmmn.vo.RequestApprovalVo">
+        SELECT B.MEMBER_NO, A.REQUEST_FORM_NO, LPAD(C.MEMBER_NO, '5' , '0') AS DESIGNER_NO,
+               B.MEMBER_EMAIL AS CLIENT_EMAIL, C.MEMBER_EMAIL AS DESIGNER_EMAIL,
+            /*C.MEMBER_NAME AS DESIGNER_NAME, C.MEMBER_BUSINESS_NAME, D.ESTIMATE_DT,*/
+               CASE C.MEMBER_SE
+                   WHEN 'B' THEN C.MEMBER_REPRESENTATIVE_NAME
+                   ELSE C.MEMBER_NAME END AS DESIGNER_NAME,
+               CASE C.MEMBER_SE
+                   WHEN 'B' THEN C.MEMBER_DENTISTRY_NAME
+                   ELSE C.MEMBER_BUSINESS_NAME END AS MEMBER_BUSINESS_NAME,
+               IFNULL(D.ESTIMATE_DATE,A.REGISTER_DT) AS ESTIMATE_DT,
+               A.REQUEST_FORM_NO
+        FROM T_REQUEST_FORM A
+                 JOIN T_MEMBER B ON A.REGISTER_NO  = B.MEMBER_NO
+                 JOIN T_MEMBER C ON A.REQUEST_DESIGNER_NO = C.MEMBER_NO
+                 LEFT JOIN T_REQUEST_ESTIMATE D ON A.REQUEST_DESIGNER_NO = D.REGISTER_NO AND A.REQUEST_FORM_NO = D.REQUEST_FORM_NO AND D.ESTIMATE_SE = 'A'
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+          AND A.REGISTER_NO = #{memberNo}
+    </select>
+
+    <select id="selectRequestApprovalDetail" resultType="com.dentner.core.cmmn.vo.RequestApprovalDetailVo">
+        SELECT
+            B.REQUEST_SE, B.REQUEST_BAK_NUMBER, B.REQUEST_NUMBER, FN_CODE_NM(C.REQUEST_PROCESS_NO, 'NAME') AS REQUEST_PROCESS_NO_NAME,
+            C.REQUEST_PROCESS_NO, C.REQUEST_PROCESS_ETC_NAME, C.REQUEST_DC, C.REQUEST_PONTIC_SE,
+            CASE WHEN C.REQUEST_PONTIC_SE = 'A' THEN 'Saddle pontic' WHEN C.REQUEST_PONTIC_SE = 'B' THEN 'Ridge lap pontic'
+                 WHEN C.REQUEST_PONTIC_SE = 'C' THEN 'Modified ridge lap pontic' WHEN C.REQUEST_PONTIC_SE = 'D' THEN 'Ovate pontic'
+                 WHEN C.REQUEST_PONTIC_SE = 'E' THEN 'Conical pontic' ELSE 'Spheroidal pontic' END AS REQUEST_PONTIC_SE_NAME,
+            C.IMPLANT_TYPE, C.VALUE_SE, C.VALUE_SJ, C.CEMENT_GAP_VALUE, C.EXTRA_GAP_VALUE, C.OCCLUSAL_DISTANCE_VALUE,
+            C.APPROXIMAL_DISTANCE_VALUE, C.HEIGHT_MINIMAL_VALUE
+        FROM T_REQUEST_FORM A
+                 JOIN T_REQUEST_DOC_GROUP B ON FIND_IN_SET(A.REQUEST_DOC_GROUPS_NO, B.REQUEST_DOC_GROUP_NO) > 0
+                 JOIN T_REQUEST_DOC C ON B.REQUEST_DOC_GROUP_NO = C.REQUEST_DOC_GROUP_NO
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+          AND A.REGISTER_NO = #{memberNo}
+    </select>
+
+    <update id="deleteTransactionCancel">
+        UPDATE T_REQUEST_FORM
+        SET
+        REQUEST_STATUS = #{requestStatus}
+        , UPDATED_DT = NOW()
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',memberSe)">
+            AND REGISTER_NO = #{registerNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe)">
+            AND REQUEST_DESIGNER_NO = #{registerNo}
+        </if>
+    </update>
+
+    <insert id="insertTransactionCancel">
+        INSERT INTO T_REQUEST_FORM_CANCEL
+        (
+          REQUEST_FORM_NO
+        , REQUEST_CANCEL_NO
+        , REQUEST_CANCEL_ETC_CN
+        , REGISTER_NO
+        ) VALUES (
+                   #{requestFormNo}
+                 , #{requestCancelNo}
+                 , #{requestCancelEtcCn}
+                 , #{registerNo}
+                 )
+    </insert>
+
+    <select id="selectTransactionStatus" resultType="com.dentner.core.cmmn.vo.TransactionStatusVo">
+        SELECT
+            A.REQUEST_FORM_NO, A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS,
+            (SELECT IF(COUNT(*)>0, 'Y', 'N') FROM T_MILEAGE WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND ADD_PAY_SE = 'N' AND DELETED_AT = 'N') AS PAY_STATUS
+        FROM T_REQUEST_FORM A
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+          AND A.REGISTER_NO = #{memberNo}
+    </select>
+
+    <select id="selectTransactionData" resultType="com.dentner.core.cmmn.vo.TransactionDataVo">
+        SELECT
+            A.REQUEST_FORM_NO, IFNULL(A.DATA_TRANSFER_AT, 'N') AS DATA_TRANSFER_AT
+        FROM T_REQUEST_FORM A
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <update id="updateRequestData">
+        UPDATE T_REQUEST_FORM
+        SET DATA_TRANSFER_AT = 'Y'
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <update id="updateDocReceive">
+        UPDATE T_REQUEST_FORM
+        SET ESTIMATE_RECEIVE_YN = 'Y'
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <update id="updateRequest3dNextTarget">
+        UPDATE T_REQUEST_FORM
+        SET ESTIMATE_3D_YN = 'Y'
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <select id="selectTransactionTaskList" resultType="com.dentner.core.cmmn.vo.RequestTaskVo">
+        SELECT
+            A.REQUEST_FORM_NO,
+            A.REQUEST_FORM_SJ,
+            A.REQUEST_EXPIRE_DATE,
+            A.REQUEST_EXPIRE_TIME,
+            (SELECT COUNT(*) FROM T_REQUEST_ESTIMATE WHERE A.REQUEST_FORM_NO = REQUEST_FORM_NO AND DELETED_AT = 'N') AS ESTIMATE_CNT
+        FROM T_REQUEST_FORM A
+        WHERE CONCAT(A.REQUEST_EXPIRE_DATE, ' ',  SUBSTRING(A.REQUEST_EXPIRE_TIME, 1, 2), ':',  SUBSTRING(A.REQUEST_EXPIRE_TIME, 3, 2), ':00') <![CDATA[<]]> NOW()
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_STATUS = 'A'
+    </select>
+
+    <select id="selectTransactionDeadlineList" resultType="com.dentner.core.cmmn.vo.RequestTaskVo">
+        SELECT
+            A.REQUEST_FORM_NO,
+            A.REQUEST_FORM_SJ,
+            A.REQUEST_DEADLINE_DATE,
+            A.REQUEST_DEADLINE_TIME,
+            (SELECT MEMBER_TP FROM T_MEMBER WHERE MEMBER_NO = A.REGISTER_NO) AS MEMBER_TP
+        FROM T_REQUEST_FORM A
+        WHERE CONCAT(A.REQUEST_DEADLINE_DATE, ' ',  SUBSTRING(A.REQUEST_DEADLINE_TIME, 1, 2), ':',  SUBSTRING(A.REQUEST_DEADLINE_TIME, 3, 2), ':00') <![CDATA[<]]> NOW()
+          AND A.DELETED_AT = 'N'
+          AND A.REQUEST_STATUS = 'C'
+          AND A.REQUEST_DEADLINE_YN = 'N'
+    </select>
+
+    <update id="updateRequestDeadline">
+        UPDATE T_REQUEST_FORM
+        SET REQUEST_DEADLINE_YN = 'Y'
+          , UPDATED_DT = NOW()
+          , UPDATED_NO = #{memberNo}
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <select id="selectTransactionTargetList" resultType="com.dentner.core.cmmn.vo.RequestEstimateVo">
+        SELECT
+            D.MEMBER_NICK_NAME, B.REQUEST_DESIGNER_NO AS MEMBER_NO,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'D' AND FILE_FROM_NO = D.MEMBER_NO AND DELETED_AT = 'N') AS DESIGNER_PROFILE_IMAGE
+        FROM T_REQUEST_FORM B
+                 JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+                 JOIN T_MEMBER_PROFILE D ON C.MEMBER_NO  = D.MEMBER_NO AND D.MEMBER_SE = 'C'
+        WHERE 1=1
+          AND B.REQUEST_FORM_NO = #{requestFormNo}
+        ORDER BY B.REGISTER_DT DESC
+    </select>
+
+    <insert id="insertTransactionRefundPay">
+        INSERT INTO T_MILEAGE (
+            MILEAGE_SE,
+            MILEAGE_AMOUNT,
+            MILEAGE_UNIT,
+            MILEAGE_CN,
+            REQUEST_FORM_NO,
+            ADD_PAY_SE,
+            REGISTER_NO
+        )
+        SELECT
+            #{mileageSe},
+            ABS(B.MILEAGE_AMOUNT),
+            B.MILEAGE_UNIT,
+            B.MILEAGE_CN,
+            #{requestFormNo},
+            #{addPaySe},
+            B.REGISTER_NO
+        FROM T_MILEAGE B
+        WHERE B.MILEAGE_SE = 'B'
+          AND B.ADD_PAY_SE = 'N'
+          AND B.REQUEST_FORM_NO = #{requestFormNo}
+    </insert>
+
+    <insert id="insertTransactionCancelRefundAllPay">
+        INSERT INTO T_MILEAGE (
+            MILEAGE_SE,
+            MILEAGE_AMOUNT,
+            MILEAGE_UNIT,
+            MILEAGE_CN,
+            REQUEST_FORM_NO,
+            ADD_PAY_SE,
+            REGISTER_NO
+        )
+        SELECT
+            #{mileageSe},
+            ABS(B.MILEAGE_AMOUNT),
+            B.MILEAGE_UNIT,
+            B.MILEAGE_CN,
+            #{requestFormNo},
+            #{addPaySe},
+            B.REGISTER_NO
+        FROM T_MILEAGE B
+        WHERE B.MILEAGE_SE = 'B'
+          AND B.ADD_PAY_SE = 'N'
+          AND B.REQUEST_FORM_NO = #{requestFormNo}
+    </insert>
+
+    <insert id="insertTransactionCancelRefundPay">
+        INSERT INTO T_MILEAGE (
+            MILEAGE_SE,
+            MILEAGE_AMOUNT,
+            MILEAGE_UNIT,
+            MILEAGE_CN,
+            REQUEST_FORM_NO,
+            ADD_PAY_SE,
+            REGISTER_NO
+        )
+        SELECT
+            #{mileageSe},
+            ABS(B.MILEAGE_AMOUNT / 2),
+            B.MILEAGE_UNIT,
+            B.MILEAGE_CN,
+            #{requestFormNo},
+            #{addPaySe},
+            B.REGISTER_NO
+        FROM T_MILEAGE B
+        WHERE B.MILEAGE_SE = 'B'
+          AND B.ADD_PAY_SE = 'N'
+          AND B.REQUEST_FORM_NO = #{requestFormNo}
+    </insert>
+
+    <update id="deleteTransactionHistory">
+        UPDATE T_REQUEST_FORM
+        SET
+        UPDATED_DT = NOW()
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A', memberSe)">
+            , REQUEST_HISTORY_AT = 'Y'
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C', memberSe)">
+            , DESIGNER_HISTORY_AT = 'Y'
+        </if>
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <update id="updateTransactionHistory">
+        UPDATE T_REQUEST_FORM
+        SET DESIGNER_HISTORY_AT = 'N'
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+    </update>
+
+    <update id="updateRemakingAddPay">
+        UPDATE T_REQUEST_REMAKING
+        SET ADD_PAY_NO = #{requestFormPayNo}
+        WHERE REQUEST_FORM_REMAKING_NO = (SELECT MAX(REQUEST_FORM_REMAKING_NO) FROM T_REQUEST_REMAKING WHERE REQUEST_FORM_NO = #{requestFormNo} AND DELETED_AT = 'N')
+    </update>
+
+    <select id="selectTransactionChat" resultType="com.dentner.core.cmmn.dto.ChatRoomAddDto">
+        SELECT
+            A.REQUEST_DESIGNER_NO AS TARGET_NO, A.REQUEST_FORM_SE, A.REGISTER_NO AS REQUEST_NO
+        FROM T_REQUEST_FORM A
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+    </select>
+
+    <select id="selectRequestCancelWhy" resultType="String">
+        SELECT CODE_NAME FROM T_CODE WHERE CODE_PARENT_NO = #{codeParentNo} and CODE_NO = #{codeNo}
+    </select>
+
+    <select id="selectRequestDealStatus" resultType="com.dentner.core.cmmn.vo.RequestFormVo">
+        SELECT REQUEST_DEAL_STATUS , REQUEST_STATUS FROM T_REQUEST_FORM WHERE REQUEST_FORM_NO = #{requestFormNo}
+
+    </select>
+
+    <delete id="deleteTransactionEstimate">
+        DELETE FROM T_REQUEST_ESTIMATE
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND REGISTER_NO = #{registerNo}
+    </delete>
+
+    <insert id="insertTransaction3dInfo" useGeneratedKeys="true" keyProperty="threeInfoNo">
+        INSERT INTO T_THREE_INFO
+                (
+                      REQUEST_FORM_NO
+                    , THREE_SJ
+                    , REGISTER_NO
+                ) VALUES (
+                      #{requestFormNo}
+                    , #{threeSj}
+                    , #{registerNo}
+                )
+    </insert>
+
+    <select id="selectTransaction3dInfo" resultType="com.dentner.core.cmmn.vo.ThreeInfoVO">
+        SELECT
+            THREE_INFO_NO, REQUEST_FORM_NO , THREE_SJ
+        FROM T_THREE_INFO
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND DELETED_AT = 'N'
+    </select>
+
+    <delete id="deleteTransaction3dInfo">
+        UPDATE T_THREE_INFO
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE THREE_INFO_NO IN
+        <foreach item="item" index="index" collection="threeInfoNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <insert id="insert3dFile">
+        INSERT INTO T_THREE_FILE
+            (
+                  THREE_INFO_NO
+                , THREE_FILE_ORDR
+                , THREE_FILE_URL
+                , THREE_FILE_NAME
+                , THREE_FILE_REAL_NAME
+                , THREE_FILE_SIZE
+                , REGISTER_NO
+            ) VALUES (
+                   #{fileFromNo}
+                 , (SELECT IFNULL(MAX(THREE_FILE_ORDR),0)+1 FROM T_THREE_FILE A WHERE THREE_INFO_NO = #{fileFromNo})
+                 , #{fileUrl}
+                 , #{fileName}
+                 , #{fileRealName}
+                 , #{fileSize}
+                 , #{registerNo}
+            )
+    </insert>
+
+    <select id="selectFileList" resultType="com.dentner.core.cmmn.vo.ThreeFileVO">
+        SELECT
+            THREE_FILE_NO, THREE_INFO_NO, THREE_FILE_ORDR, THREE_FILE_URL, THREE_FILE_NAME, THREE_FILE_REAL_NAME, THREE_FILE_SIZE
+        FROM T_THREE_FILE
+        WHERE DELETED_AT = 'N'
+          AND THREE_INFO_NO = #{threeInfoNo}
+        ORDER BY THREE_FILE_ORDR
+    </select>
+
+    <select id="selectTransaction3dMemo" resultType="com.dentner.core.cmmn.vo.ThreeMemoVO">
+        SELECT
+            THREE_MEMO_NO, THREE_FILE_NO, THREE_MEMO, THREE_MEMO_POS_X, THREE_PARENT_NO,
+            THREE_MEMO_POS_Y, THREE_MEMO_POS_Z, REGISTER_DT, REGISTER_NO,
+            FN_USER_NICKNM(REGISTER_NO) AS REGISTER_NAME
+        FROM T_THREE_MEMO
+        WHERE DELETED_AT = 'N'
+          AND THREE_FILE_NO = #{threeFileNo}
+        ORDER BY REGISTER_DT DESC
+    </select>
+
+    <insert id="insertTransaction3dMemo" useGeneratedKeys="true" keyProperty="threeMemoNo">
+        INSERT INTO T_THREE_MEMO
+            (
+                  THREE_FILE_NO
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(threeParentNo)">
+                , THREE_PARENT_NO
+                </if>
+                , THREE_MEMO
+                <if test="@com.dentner.core.util.MybatisUtils@isEmpty(threeParentNo)">
+                , THREE_MEMO_POS_X
+                , THREE_MEMO_POS_Y
+                , THREE_MEMO_POS_Z
+                </if>
+                , REGISTER_NO
+            ) VALUES (
+                  #{threeFileNo}
+                <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(threeParentNo)">
+                , #{threeParentNo}
+                </if>
+                , #{threeMemo}
+                <if test="@com.dentner.core.util.MybatisUtils@isEmpty(threeParentNo)">
+                , #{threeMemoPosX}
+                , #{threeMemoPosY}
+                , #{threeMemoPosZ}
+                </if>
+                , #{registerNo}
+            )
+    </insert>
+
+    <delete id="deleteTransaction3dMemo">
+        UPDATE T_THREE_MEMO
+        SET
+            DELETED_AT = 'Y'
+          , DELETED_DT = NOW()
+        WHERE THREE_MEMO_NO IN
+        <foreach item="item" index="index" collection="threeMemoNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </delete>
+
+    <select id="select3dMemo" resultType="com.dentner.core.cmmn.dto.Request3dMemoAdd">
+        SELECT
+            THREE_MEMO_NO, THREE_FILE_NO, THREE_MEMO, THREE_MEMO_POS_X, THREE_PARENT_NO,
+            THREE_MEMO_POS_Y, THREE_MEMO_POS_Z, REGISTER_DT, REGISTER_NO,
+            FN_USER_NICKNM(REGISTER_NO) AS REGISTER_NAME
+        FROM T_THREE_MEMO
+        WHERE DELETED_AT = 'N'
+          AND THREE_MEMO_NO = #{threeMemoNo}
+    </select>
+
+    <select id="selectTransactionEstimateReceive" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REQUEST_ESTIMATE
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND ESTIMATE_RECEIVE_YN = 'Y'
+          AND REGISTER_NO = #{memberNo}
+    </select>
+
+    <select id="selectTransactionReceive" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_REQUEST_FORM
+        WHERE REQUEST_FORM_NO = #{requestFormNo}
+          AND ESTIMATE_RECEIVE_YN = 'Y'
+    </select>
+</mapper>

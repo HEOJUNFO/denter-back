@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminBoardMapper">
+    <select id="selectBoardList" resultType="com.dentner.core.cmmn.vo.BbsVo">
+        SELECT
+            A.BOARD_NO, A.CUSTOMER_NO, A.BOARD_TP, A.BOARD_SUBJECT, A.CREATED_AT,
+            FN_USER_NM(A.CREATED_NO) AS CREATED_NAME,
+            FN_FILE_YN(A.BOARD_NO, "B") AS BOARD_FILE_YN
+        FROM T_BOARD A
+        WHERE 1=1
+          AND A.BOARD_TP = #{boardTp}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('0',customerNo)">
+            AND A.CUSTOMER_NO = #{customerNo}
+        </if>
+          AND A.DELETED_FG = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+                (BOARD_SUBJECT LIKE CONCAT('%', #{searchKeyword}, '%')
+                    OR BOARD_CONTENT LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.CREATED_AT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectBoardListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT
+            FROM (SELECT A.BOARD_NO,
+                         A.CUSTOMER_NO,
+                         A.BOARD_TP,
+                         A.BOARD_SUBJECT,
+                         A.CREATED_AT,
+                         FN_USER_NM(A.CREATED_NO) AS CREATED_NAME
+                  FROM T_BOARD A
+                  WHERE 1 = 1
+                    AND A.BOARD_TP = #{boardTp}
+                    <if test="@com.dentner.core.util.MybatisUtils@isNotEquals('0',customerNo)">
+                        AND A.CUSTOMER_NO = #{customerNo}
+                    </if>
+                    <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+                        AND
+                        (BOARD_SUBJECT LIKE CONCAT('%', #{searchKeyword}, '%')
+                        OR BOARD_CONTENT LIKE CONCAT('%', #{searchKeyword}, '%'))
+                    </if>
+                    AND A.DELETED_FG = 'N') TB
+    </select>
+
+    <select id="selectBoardDetail" resultType="com.dentner.core.cmmn.vo.BbsVo">
+        SELECT
+            A.BOARD_NO, A.CUSTOMER_NO, A.BOARD_TP, A.BOARD_SUBJECT, A.CREATED_AT, A.BOARD_CONTENT, A.BOARD_POP_FG,
+            FN_USER_NM(A.CREATED_NO) AS CREATED_NAME
+        FROM T_BOARD A
+        WHERE 1=1
+          AND A.BOARD_NO = #{boardNo}
+          AND A.DELETED_FG = 'N'
+    </select>
+
+    <update id="deleteAllPopBoard">
+        UPDATE T_BOARD
+        SET BOARD_POP_FG = 'N'
+    </update>
+
+    <update id="updatePopBoard">
+        UPDATE T_BOARD
+        SET
+              BOARD_POP_FG = 'Y'
+            , UPDATED_AT = NOW()
+        WHERE BOARD_NO = #{boardNo}
+    </update>
+
+    <insert id="insertBoard" useGeneratedKeys="true" keyProperty="boardNo">
+        INSERT INTO T_BOARD
+            (
+                  CUSTOMER_NO
+                , BOARD_TP
+                , BOARD_SUBJECT
+                , BOARD_CONTENT
+                , BOARD_VIEWS
+                , CREATED_NO
+            ) VALUES (
+                  #{customerNo}
+                , #{boardTp}
+                , #{boardSubject}
+                , #{boardContent}
+                , 0
+                , #{createdNo}
+            )
+    </insert>
+
+    <update id="updateBoard">
+        UPDATE T_BOARD
+        SET
+              BOARD_SUBJECT = #{boardSubject}
+            , BOARD_CONTENT = #{boardContent}
+            , UPDATED_AT = NOW()
+        WHERE BOARD_NO = #{boardNo}
+    </update>
+
+    <update id="deleteBoard">
+        UPDATE T_BOARD
+        SET
+            DELETED_FG = 'Y'
+          , DELETED_AT = NOW()
+        WHERE BOARD_NO = #{boardNo}
+    </update>
+
+</mapper>

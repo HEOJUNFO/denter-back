@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminTransactionMapper">
+    <select id="selectTransactionList" resultType="com.dentner.core.cmmn.vo.AdminRequestFormVo">
+        SELECT * FROM (
+            SELECT
+            	ROW_NUMBER() OVER (ORDER BY A.REGISTER_DT DESC) AS ROW_NUM,
+                A.REQUEST_FORM_SJ, G.MEMBER_EMAIL,  A.REQUEST_FORM_SE, A.REGISTER_NO AS MEMBER_NO,
+                C.REQUEST_ESTIMATE_NO,
+                A.REGISTER_DT, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO, A.REQUEST_STATUS,
+                FN_REQUEST_DEAL_STATUS_NM(A.REQUEST_DEAL_STATUS) AS REQUEST_DEAL_STATUS_NAME,
+                FN_REQUEST_STATUS_NM(A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO) AS REQUEST_STATUS_NAME,
+                '' AS MILEAGE_STATUS,
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = G.MEMBER_NO) AS REQUEST_NICK_NAME,
+                CASE WHEN A.REQUEST_FORM_SE = 'A' THEN
+                    (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.REGISTER_NO AND MEMBER_SE = 'C')
+                ELSE
+                    (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'C')
+                END AS DESIGNER_NICK_NAME,
+                CASE WHEN A.REQUEST_FORM_SE = 'A' THEN
+                    (SELECT MEMBER_EMAIL FROM T_MEMBER WHERE MEMBER_NO = C.REGISTER_NO)
+                ELSE
+                    (SELECT MEMBER_EMAIL FROM T_MEMBER WHERE MEMBER_NO = B.MEMBER_NO)
+                END AS DESIGNER_EMAIL,
+                (SELECT COUNT(*) FROM T_REQUEST_FORM_ANSWER WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N') AS ANSWER_CNT,
+                (SELECT ABS(SUM(MILEAGE_AMOUNT)) FROM T_MILEAGE WHERE MILEAGE_SE = 'B' AND REQUEST_FORM_NO = A.REQUEST_FORM_NO AND REGISTER_NO = A.REGISTER_NO) AS MILEAGE_AMOUNT
+            FROM T_REQUEST_FORM A
+            LEFT JOIN T_MEMBER B ON A.REQUEST_DESIGNER_NO = B.MEMBER_NO
+            LEFT JOIN T_MEMBER G ON A.REGISTER_NO = G.MEMBER_NO
+            LEFT JOIN T_REQUEST_ESTIMATE C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO
+            WHERE A.DELETED_AT = 'N'
+              AND A.REQUEST_FORM_SE = #{requestFormSe}
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+              AND A.REQUEST_STATUS = #{statusFilter}
+            </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+              AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            ) AS TB
+        WHERE 1=1
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+                AND
+                (REQUEST_FORM_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR DESIGNER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR REQUEST_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR DESIGNER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+            </if>
+        ORDER BY REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectTransactionListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT FROM (
+            SELECT
+                A.REQUEST_FORM_SJ, G.MEMBER_EMAIL, B.MEMBER_EMAIL AS DESIGNER_EMAIL,
+                A.REGISTER_DT, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO,
+                '' AS MILEAGE_STATUS, 0 AS MILEAGE_AMOUNT,
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = G.MEMBER_NO) AS REQUEST_NICK_NAME,
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
+                (SELECT COUNT(*) FROM T_REQUEST_FORM_ANSWER WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N') AS ANSWER_CNT
+            FROM T_REQUEST_FORM A
+            LEFT JOIN T_MEMBER B ON A.REQUEST_DESIGNER_NO = B.MEMBER_NO
+            LEFT JOIN T_MEMBER G ON A.REGISTER_NO = G.MEMBER_NO
+            LEFT JOIN T_REQUEST_ESTIMATE C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO
+            WHERE A.DELETED_AT = 'N'
+            AND A.REQUEST_FORM_SE = #{requestFormSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND A.REQUEST_STATUS = #{statusFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        ) AS TB
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (REQUEST_FORM_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REQUEST_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectTransactionDetail" resultType="com.dentner.core.cmmn.vo.AdminRequestFormVo">
+        SELECT
+            A.REQUEST_FORM_SJ, G.MEMBER_EMAIL,
+            A.REGISTER_DT, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO, A.REQUEST_FORM_SE,
+            '' AS MILEAGE_STATUS, 0 AS MILEAGE_AMOUNT,
+            A.REQUEST_EXPIRE_DATE, A.REQUEST_EXPIRE_TIME,
+            A.REQUEST_DEADLINE_DATE, A.REQUEST_DEADLINE_TIME,
+            C.ESTIMATE_DATE, C.ESTIMATE_TIME,
+            FN_REQUEST_DEAL_STATUS_NM(A.REQUEST_DEAL_STATUS) AS REQUEST_DEAL_STATUS_NAME,
+            FN_REQUEST_STATUS_NM(A.REQUEST_STATUS, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO) AS REQUEST_STATUS_NAME,
+            (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = G.MEMBER_NO) AS REQUEST_NICK_NAME,
+            (SELECT COUNT(*) FROM T_REQUEST_FORM_ANSWER WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N') AS ANSWER_CNT,
+            CASE WHEN A.REQUEST_FORM_SE = 'A' THEN
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = C.REGISTER_NO AND MEMBER_SE = 'C')
+            ELSE
+                (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'C')
+            END AS DESIGNER_NICK_NAME,
+            CASE WHEN A.REQUEST_FORM_SE = 'A' THEN
+                (SELECT MEMBER_EMAIL FROM T_MEMBER WHERE MEMBER_NO = C.REGISTER_NO)
+            ELSE
+                (SELECT MEMBER_EMAIL FROM T_MEMBER WHERE MEMBER_NO = B.MEMBER_NO)
+            END AS DESIGNER_EMAIL
+        FROM T_REQUEST_FORM A
+        LEFT JOIN T_MEMBER B ON A.REQUEST_DESIGNER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER G ON A.REGISTER_NO = G.MEMBER_NO
+        LEFT JOIN T_REQUEST_ESTIMATE C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO
+        WHERE A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',type)">
+          AND C.REQUEST_ESTIMATE_NO = #{requestFormNo}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',type)">
+          AND A.REQUEST_FORM_NO = #{requestFormNo}
+        </if>
+    </select>
+
+    <select id="selectTransactionDocGroup" resultType="map">
+        SELECT
+            DATE_FORMAT(A.REGISTER_DT, '%Y.%m.%d %h:%i') AS registerDt,
+            A.REQUEST_DOC_GROUP_NO AS requestDocGroupNo,
+            A.REQUEST_NUMBER AS requestNumber,
+            A.REQUEST_SE AS requestSe,
+            (SELECT IF(FN_CODE_NM(MAX(REQUEST_PROCESS_NO), 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME'))
+             FROM T_REQUEST_DOC
+             WHERE REQUEST_DOC_GROUP_NO = A.REQUEST_DOC_GROUP_NO
+               AND DELETED_AT = 'N') AS requestDocName
+        FROM T_REQUEST_DOC_GROUP A
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(A.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        WHERE A.DELETED_AT = 'N'
+          AND RF.REQUEST_FORM_NO = #{requestFormNo}
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectTransactionReplyList" resultType="com.dentner.core.cmmn.vo.ReplyVo">
+        SELECT
+            REQUEST_FORM_ANSWER_NO, REQUEST_FORM_NO, ANSWER_CN, PARENT_ANSWER_NO, REGISTER_NO,
+            A.REGISTER_DT,
+            FN_USER_NICKNM(A.REGISTER_NO) AS MEMBER_NICK_NAME
+        FROM T_REQUEST_FORM_ANSWER A
+        WHERE A.REQUEST_FORM_NO = #{requestFormNo}
+          AND A.DELETED_AT = 'N'
+    </select>
+
+    <select id="selectTransactionProstheticsList" resultType="map">
+        SELECT
+            A.REQUEST_TYPE_NAME AS requestTypeName, SUM(A.TYPE_COUNT) AS count
+        FROM T_REQUEST_TYPE A
+        JOIN T_REQUEST_DOC RD ON A.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+        JOIN T_REQUEST_DOC_GROUP RDG ON RD.REQUEST_DOC_GROUP_NO = RDG.REQUEST_DOC_GROUP_NO
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(RDG.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        WHERE RDG.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+        GROUP BY REQUEST_TYPE_NAME
+        ORDER BY REQUEST_TYPE_NO
+    </select>
+
+    <select id="selectTransactionDoc" resultType="map">
+        SELECT
+            A.REQUEST_DOC_GROUP_NO AS requestDocGroupNo,
+            A.REQUEST_PROCESS_NO AS requestProcessNo,
+            A.REQUEST_PROCESS_ETC_NAME AS requestProcessEtcName,
+            A.REQUEST_DC AS requestDc,
+            IF(FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME') = '', '가공방법: 미선택', FN_CODE_NM(REQUEST_PROCESS_NO, 'NAME')) AS requestProcessName,
+            A.REQUEST_PONTIC_SE AS requestPonticSe,
+            A.IMPLANT_TYPE AS implantType,
+            A.VALUE_SE AS valueSe,
+            A.VALUE_SJ AS valueSj,
+            A.CEMENT_GAP_VALUE AS cementGapValue,
+            A.EXTRA_GAP_VALUE AS extraGapValue,
+            A.OCCLUSAL_DISTANCE_VALUE AS occlusalDistanceValue,
+            A.APPROXIMAL_DISTANCE_VALUE AS approximalDistanceValue,
+            A.HEIGHT_MINIMAL_VALUE AS heightMinimalValue
+        FROM T_REQUEST_DOC A
+        JOIN T_REQUEST_DOC_GROUP B ON A.REQUEST_DOC_GROUP_NO = B.REQUEST_DOC_GROUP_NO
+        WHERE 1=1
+          AND A.REQUEST_DOC_GROUP_NO = #{requestDocGroupNo}
+    </select>
+
+
+    <select id="selectTransctionExcelList" resultType="com.dentner.core.cmmn.vo.AdminRequestFormVo">
+        SELECT TB.* , T1.*,ABS(TM.MILEAGE_AMOUNT) as MILEAGE_AMOUNT , IF(ABS(TM.MILEAGE_AMOUNT)>0, 'Y','N') as MILEAGE_STATUS   FROM (
+        SELECT
+        A.REQUEST_FORM_SJ, G.MEMBER_EMAIL, B.MEMBER_EMAIL AS DESIGNER_EMAIL,
+        A.REGISTER_DT, A.REQUEST_DEAL_STATUS, A.REQUEST_FORM_NO,
+        (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = G.MEMBER_NO) AS REQUEST_NICK_NAME,
+        (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
+        (SELECT COUNT(*) FROM T_REQUEST_FORM_ANSWER WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO AND DELETED_AT = 'N') AS ANSWER_CNT,
+        A.REQUEST_DOC_GROUPS_NO
+        FROM T_REQUEST_FORM A
+        LEFT JOIN T_MEMBER B ON A.REQUEST_DESIGNER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER G ON A.REGISTER_NO = G.MEMBER_NO
+        LEFT JOIN T_REQUEST_ESTIMATE C ON A.REQUEST_FORM_NO = C.REQUEST_FORM_NO
+        WHERE A.DELETED_AT = 'N'
+        AND A.REQUEST_FORM_SE = #{requestFormSe}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND A.REQUEST_STATUS = #{statusFilter}
+        </if>
+
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        ) AS TB LEFT JOIN  (
+        SELECT
+        A.REQUEST_TYPE_NAME AS requestTypeName, SUM(A.TYPE_COUNT) AS count, RDG.REQUEST_DOC_GROUP_NO
+        FROM T_REQUEST_TYPE A
+        JOIN T_REQUEST_DOC RD ON A.REQUEST_DOC_NO = RD.REQUEST_DOC_NO
+        JOIN T_REQUEST_DOC_GROUP RDG ON RD.REQUEST_DOC_GROUP_NO = RDG.REQUEST_DOC_GROUP_NO
+        JOIN T_REQUEST_FORM RF ON FIND_IN_SET(RDG.REQUEST_DOC_GROUP_NO, REQUEST_DOC_GROUPS_NO) > 0
+        GROUP BY REQUEST_TYPE_NAME
+        ORDER BY REQUEST_TYPE_NO
+        ) T1 ON  FIND_IN_SET (T1.REQUEST_DOC_GROUP_NO, TB.REQUEST_DOC_GROUPS_NO)  > 0
+        LEFT JOIN T_MILEAGE TM ON TB.REQUEST_FORM_NO = TM.REQUEST_FORM_NO
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (REQUEST_FORM_SJ LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR REQUEST_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+</mapper>

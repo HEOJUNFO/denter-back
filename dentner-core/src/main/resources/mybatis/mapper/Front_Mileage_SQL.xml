@@ -1,0 +1,612 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.MileageMapper">
+    <select id="selectCardInfo" resultType="com.dentner.core.cmmn.vo.CardVo">
+        SELECT
+            CARD_NO, CARD_COMPANY_NO, CARD_NUMBER, CARD_MONTH, CARD_YEAR,
+            CARD_PASSWORD, REGISTER_NO, ID_NUM, ID_NUM_TYPE, BILL_KEY, MO_ID, BUYER_NAME, USER_ID,
+            (SELECT CODE_NAME FROM T_CODE WHERE CODE_PARENT_NO = 920 AND CODE_DESC = A.CARD_COMPANY_NO) AS CARD_COMPANY_NO_NAME
+        FROM T_CARD A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REGISTER_NO = #{registerNo}
+    </select>
+
+    <select id="selectCardCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CARD
+        WHERE DELETED_AT = 'N'
+          AND REGISTER_NO = #{registerNo}
+    </select>
+
+    <insert id="insertCard">
+        INSERT INTO T_CARD
+            (
+                  CARD_COMPANY_NO
+                , CARD_NUMBER
+                , CARD_MONTH
+                , CARD_YEAR
+                , CARD_PASSWORD
+                , ID_NUM
+                , ID_NUM_TYPE
+                , BILL_KEY
+                , MO_ID
+                , BUYER_NAME
+                , USER_ID
+                , REGISTER_NO
+            ) VALUES (
+                  #{cardCompanyNo}
+                , #{cardNumber}
+                , #{cardMonth}
+                , #{cardYear}
+                , #{cardPassword}
+                , #{idNum}
+                , #{idNumType}
+                , #{billKey}
+                , #{moid}
+                , #{buyerName}
+                , #{userid}
+                , #{registerNo}
+            )
+    </insert>
+
+    <update id="updateCard">
+        UPDATE T_CARD
+        SET
+            CARD_COMPANY_NO = #{cardCompanyNo}
+          , CARD_NUMBER = #{cardNumber}
+          , CARD_MONTH = #{cardMonth}
+          , CARD_YEAR = #{cardYear}
+          , CARD_PASSWORD = #{cardPassword}
+          , ID_NUM = #{idNum}
+          , ID_NUM_TYPE = #{idNumType}
+          , BILL_KEY = #{billKey}
+          , MO_ID = #{moid}
+          , BUYER_NAME = #{buyerName}
+          , USER_ID = #{userid}
+        WHERE REGISTER_NO = #{registerNo}
+    </update>
+
+    <insert id="insertMileageCharge" useGeneratedKeys="true" keyProperty="mileageNo">
+        INSERT INTO T_MILEAGE
+                (
+                  MILEAGE_SE
+                , MILEAGE_AMOUNT
+                , MILEAGE_UNIT
+                , MILEAGE_CN
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(cardNo)">
+                , CARD_NO
+        </if>
+                , ORDER_NUMBER
+                , REGISTER_NO
+                ) VALUES (
+                   #{mileageSe}
+                 , #{mileageAmount}
+                 , #{mileageUnit}
+                 , #{mileageCn}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(cardNo)">
+                 , #{cardNo}
+        </if>
+                 , #{orderNumber}
+                 , #{registerNo}
+                 )
+    </insert>
+
+    <select id="selectMileageChargeList" resultType="com.dentner.core.cmmn.vo.MileageVo">
+        SELECT
+            A.MILEAGE_NO, A.MILEAGE_SE, A.MILEAGE_AMOUNT, A.MILEAGE_CN, A.MILEAGE_UNIT, A.CARD_NO, FN_GET_TIMEZONE_DATE(#{registerNo}, A.REGISTER_DT) AS REGISTER_DT,
+            CASE WHEN B.MILEAGE_NO IS NULL THEN 'A'
+            ELSE CASE WHEN B.MILEAGE_STATUS = 'A' THEN 'B' ELSE 'C' END
+            END AS MILEAGE_STATUS
+        FROM T_MILEAGE A
+        LEFT JOIN T_MILEAGE_REFUND B ON A.MILEAGE_NO = B.MILEAGE_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REGISTER_NO = #{registerNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND A.MILEAGE_SE = #{statusFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(statusFilter)">
+            AND A.MILEAGE_SE IN ('A','C')
+        </if>
+
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectMileageChargeListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MILEAGE A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.REGISTER_NO = #{registerNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND A.MILEAGE_SE = #{statusFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(statusFilter)">
+            AND A.MILEAGE_SE IN ('A','C')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+    </select>
+
+    <select id="selectMileagePaymentList" resultType="com.dentner.core.cmmn.vo.MileageVo">
+        SELECT
+            A.MILEAGE_NO, A.MILEAGE_SE, A.MILEAGE_AMOUNT, A.MILEAGE_CN, A.MILEAGE_UNIT, A.CARD_NO, FN_GET_TIMEZONE_DATE(#{registerNo}, A.REGISTER_DT) AS REGISTER_DT,
+            CASE WHEN B.MILEAGE_NO IS NULL THEN 'A'
+            ELSE CASE WHEN B.MILEAGE_STATUS = 'A' THEN 'B' ELSE 'C' END
+            END AS MILEAGE_STATUS
+        FROM T_MILEAGE A
+        LEFT JOIN T_MILEAGE_REFUND B ON A.MILEAGE_NO = B.MILEAGE_NO
+        WHERE 1=1
+            AND A.DELETED_AT = 'N'
+            AND A.REGISTER_NO = #{registerNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND A.MILEAGE_SE = #{statusFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(statusFilter)">
+            AND A.MILEAGE_SE IN ('B','D')
+        </if>
+
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectMileagePaymentListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MILEAGE A
+        WHERE 1=1
+            AND A.DELETED_AT = 'N'
+            AND A.REGISTER_NO = #{registerNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND A.MILEAGE_SE = #{statusFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isEmpty(statusFilter)">
+            AND A.MILEAGE_SE IN ('B','D')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+    </select>
+
+    <select id="selectMileage" resultType="int">
+            SELECT
+                IFNULL(SUM(MILEAGE_AMOUNT),0) AS MILEAGE_AMOUNT
+            FROM T_MILEAGE A
+            WHERE 1=1
+              AND A.DELETED_AT = 'N'
+              AND A.REGISTER_NO = #{memberNo}
+        <if test="@com.dentner.core.util.MybatisUtils@equals('C',memberSe)">
+            SELECT
+                IFNULL(ABS(SUM(MILEAGE_AMOUNT)),0) AS MILEAGE_AMOUNT
+            FROM T_MILEAGE A
+            JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+            JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+            WHERE A.MILEAGE_SE IN ('B','D')
+            AND C.MEMBER_NO = #{memberNo}
+            AND A.CALCULATE_SE = 'N'
+        </if>
+    </select>
+
+    <insert id="insertMileageRefund">
+        INSERT INTO T_MILEAGE_REFUND
+                (
+                  MILEAGE_NO
+                , MILEAGE_REFUND_CODE_NO
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(mileageRefundCn)">
+                , MILEAGE_REFUND_CN
+        </if>
+                , MILEAGE_STATUS
+                , MILEAGE_REFUND_SE
+                , REGISTER_NO
+                ) VALUES (
+                  #{mileageNo}
+                , #{mileageRefundCodeNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(mileageRefundCn)">
+                , #{mileageRefundCn}
+        </if>
+                , 'A'
+                , #{mileageRefundSe}
+                , #{registerNo}
+                )
+    </insert>
+
+    <select id="selectMileageDesigner" resultType="map">
+        SELECT IFNULL(SUM(CASE WHEN TB.MILEAGE_UNIT = 'A' THEN TB.MILEAGE_AMOUNT ELSE 0 END),0) AS mileageWon,
+               IFNULL(SUM(CASE WHEN TB.MILEAGE_UNIT = 'B' THEN TB.MILEAGE_AMOUNT ELSE 0 END),0) AS mileageDollar
+        FROM (
+             WITH PaymentA AS (
+                 SELECT
+                     REQUEST_FORM_NO, MILEAGE_NO, ABS(MILEAGE_AMOUNT) AS PAYMENT_AMOUNT, MILEAGE_UNIT
+                 FROM T_MILEAGE
+                 WHERE MILEAGE_SE = 'B'
+                   AND MILEAGE_UNIT = 'A'
+             ),
+                  PaymentB AS (
+                      SELECT
+                          REQUEST_FORM_NO, MILEAGE_NO, ABS(MILEAGE_AMOUNT) AS PAYMENT_AMOUNT, MILEAGE_UNIT
+                      FROM T_MILEAGE
+                      WHERE MILEAGE_SE = 'B'
+                        AND MILEAGE_UNIT = 'B'
+                  ),
+                  Refund AS (
+                      SELECT
+                          REQUEST_FORM_NO, SUM(ABS(MILEAGE_AMOUNT)) AS TOTAL_REFUND_AMOUNT
+                      FROM T_MILEAGE
+                      WHERE MILEAGE_SE = 'D'
+                      GROUP BY REQUEST_FORM_NO
+                  )
+             SELECT DISTINCT
+                 A.MILEAGE_UNIT, A.MILEAGE_NO, A.MILEAGE_CN, A.CALCULATE_SE, A.MILEAGE_SE,
+                 CASE
+                     WHEN R.TOTAL_REFUND_AMOUNT IS NULL THEN 'A'
+                     WHEN R.TOTAL_REFUND_AMOUNT >= ABS(A.MILEAGE_AMOUNT) THEN 'B'
+                     ELSE 'C'
+                     END AS PAY_REFUND_STATUS,
+                 ABS(A.MILEAGE_AMOUNT) - IFNULL(R.TOTAL_REFUND_AMOUNT, 0) AS MILEAGE_AMOUNT
+             FROM T_MILEAGE A
+                      JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+                      JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+                      LEFT JOIN T_CALCULATE D ON A.MILEAGE_NO = D.MILEAGE_NO
+                      LEFT JOIN PaymentA PA ON A.REQUEST_FORM_NO = PA.REQUEST_FORM_NO
+                      LEFT JOIN PaymentB PB ON A.REQUEST_FORM_NO = PB.REQUEST_FORM_NO
+                      LEFT JOIN Refund R ON A.REQUEST_FORM_NO = R.REQUEST_FORM_NO
+             WHERE A.MILEAGE_SE IN ('B', 'D')
+               AND C.MEMBER_NO = #{memberNo}
+               AND B.REQUEST_STATUS IN ('D', 'E')
+               AND A.CALCULATE_SE = 'N'
+             ) TB
+        WHERE TB.PAY_REFUND_STATUS IN ('A', 'C')
+          AND TB.MILEAGE_AMOUNT != 0;
+    </select>
+
+    <select id="selectMileageDesignerCalculate" resultType="map">
+        SELECT
+        IFNULL((SELECT
+            SUM(CALCULATE_AMOUNT)
+        FROM T_CALCULATE A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MILEAGE_UNIT = 'A'
+          AND A.CONFIRM_AT = 'N'
+          AND A.REGISTER_NO = #{memberNo}),0) AS mileageWon,
+        IFNULL((SELECT
+            SUM(CALCULATE_AMOUNT)
+        FROM T_CALCULATE A
+        WHERE A.DELETED_AT = 'N'
+          AND A.MILEAGE_UNIT = 'B'
+          AND A.CONFIRM_AT = 'N'
+          AND A.REGISTER_NO = #{memberNo}),0) AS mileageDollar
+    </select>
+
+    <update id="updateMileageCalculate">
+        UPDATE T_MILEAGE
+        SET CALCULATE_SE = 'A'
+        WHERE CALCULATE_SE = 'N'
+          AND MILEAGE_NO = #{mileageNo}
+    </update>
+
+    <insert id="insertMileageCalculate">
+        INSERT INTO T_CALCULATE
+            (
+                  REGISTER_NO
+                , CALCULATE_AMOUNT
+                , MILEAGE_NO
+                , MILEAGE_UNIT
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(calculateGroupNo)">
+                , CALCULATE_GROUP_NO
+        </if>
+            ) VALUES (
+                  #{registerNo}
+                , #{calculateAmount}
+                , #{mileageNo}
+                , #{mileageUnit}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(calculateGroupNo)">
+                , #{calculateGroupNo}
+        </if>
+            )
+    </insert>
+
+    <select id="selectMileageDepositList" resultType="com.dentner.core.cmmn.vo.MileageDesignerVo">
+        WITH Payment AS (
+            SELECT
+                REQUEST_FORM_NO, MILEAGE_NO, ABS(MILEAGE_AMOUNT) AS PAYMENT_AMOUNT, MILEAGE_UNIT
+            FROM T_MILEAGE
+            WHERE MILEAGE_SE = 'B'
+              AND MILEAGE_UNIT = 'A'
+        ),
+        Refund AS (
+            SELECT
+                REQUEST_FORM_NO, SUM(ABS(MILEAGE_AMOUNT)) AS TOTAL_REFUND_AMOUNT
+            FROM T_MILEAGE
+            WHERE MILEAGE_SE = 'D'
+            GROUP BY REQUEST_FORM_NO
+        )
+        SELECT DISTINCT
+            A.MILEAGE_UNIT, ABS(A.MILEAGE_AMOUNT) AS MILEAGE_AMOUNT, A.MILEAGE_NO,
+            CASE WHEN A.MILEAGE_UNIT = 'A' THEN '원화' ELSE '달러' END AS MILEAGE_UNIT_NAME,
+            D.TRANSFER_AMOUNT , A.MILEAGE_CN , D.TRANSFER_DT, A.MILEAGE_SE,
+            A.CALCULATE_SE AS CALCULATE_STATUS,
+            (SELECT IF(COUNT(*)>0,'Y','N') FROM T_MILEAGE_REFUND WHERE MILEAGE_NO = A.MILEAGE_NO) AS REFUND_STATUS,
+            CASE
+                WHEN R.TOTAL_REFUND_AMOUNT IS NULL THEN 'A'  -- 환불 없음
+                WHEN R.TOTAL_REFUND_AMOUNT >= ABS(A.MILEAGE_AMOUNT) THEN 'B'  -- 전체 환불
+                ELSE 'C'  -- 일부 환불
+            END AS PAY_REFUND_STATUS,
+            ABS(A.MILEAGE_AMOUNT) - IFNULL(R.TOTAL_REFUND_AMOUNT, 0) AS PAYMENT_AMOUNT
+        FROM T_MILEAGE A
+        JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+        JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+        LEFT JOIN T_CALCULATE D ON A.MILEAGE_NO = D.MILEAGE_NO
+        LEFT JOIN Payment P ON A.REQUEST_FORM_NO = P.REQUEST_FORM_NO  -- 결제 정보
+        LEFT JOIN Refund R ON A.REQUEST_FORM_NO = R.REQUEST_FORM_NO   -- 환불 정보
+        WHERE A.MILEAGE_SE IN ('B','D')
+          AND C.MEMBER_NO = #{registerNo}
+          AND B.REQUEST_STATUS IN ('D', 'E')
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(amountFilter)">
+            AND A.MILEAGE_UNIT = #{amountFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY A.REGISTER_DT DESC, A.MILEAGE_NO
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectMileageDepositListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MILEAGE A
+        JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+        JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+        LEFT JOIN T_CALCULATE D ON A.MILEAGE_NO = D.MILEAGE_NO
+        WHERE A.MILEAGE_SE IN ('B','D')
+          AND C.MEMBER_NO = #{registerNo}
+          AND B.REQUEST_STATUS IN ('D', 'E')
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(amountFilter)">
+            AND A.MILEAGE_UNIT = #{amountFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+    </select>
+
+    <select id="selectMileageCalculateList" resultType="com.dentner.core.cmmn.vo.MileageDesignerCalculateVo">
+        SELECT
+            A.CALCULATE_NO, A.MILEAGE_NO, A.CALCULATE_AMOUNT, B.CALCULATE_SE, B.MILEAGE_CN,
+            A.REGISTER_NO, A.REGISTER_DT, B.MILEAGE_UNIT , B.MILEAGE_AMOUNT, B.MILEAGE_SE
+        FROM T_CALCULATE A
+        JOIN T_MILEAGE B ON A.MILEAGE_NO = B.MILEAGE_NO
+        WHERE B.MILEAGE_SE IN ('B','D')
+          AND A.REGISTER_NO = #{registerNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND B.CALCULATE_SE = #{statusFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY A.REGISTER_DT DESC, A.CALCULATE_NO DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectMileageCalculateListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CALCULATE A
+        JOIN T_MILEAGE B ON A.MILEAGE_NO = B.MILEAGE_NO
+        WHERE B.MILEAGE_SE IN ('B','D')
+        AND A.REGISTER_NO = #{registerNo}
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(statusFilter)">
+            AND B.CALCULATE_SE = #{statusFilter}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <select id="selectCalculateAllList" resultType="com.dentner.core.cmmn.vo.MileageVo">
+        SELECT * FROM (
+            WITH Payment AS (
+                SELECT
+                  REQUEST_FORM_NO, MILEAGE_NO, ABS(MILEAGE_AMOUNT) AS PAYMENT_AMOUNT, MILEAGE_UNIT
+                FROM T_MILEAGE
+                WHERE MILEAGE_SE = 'B'
+                -- AND MILEAGE_UNIT = 'A'
+            ),
+                Refund AS (
+                   SELECT
+                       REQUEST_FORM_NO, SUM(ABS(MILEAGE_AMOUNT)) AS TOTAL_REFUND_AMOUNT
+                   FROM T_MILEAGE
+                   WHERE MILEAGE_SE = 'D'
+                   GROUP BY REQUEST_FORM_NO
+            )
+            SELECT DISTINCT
+              A.MILEAGE_UNIT,  A.MILEAGE_NO, A.MILEAGE_CN, A.CALCULATE_SE, A.MILEAGE_SE,
+              CASE
+                  WHEN R.TOTAL_REFUND_AMOUNT IS NULL THEN 'A'
+                  WHEN R.TOTAL_REFUND_AMOUNT >= ABS(A.MILEAGE_AMOUNT) THEN 'B'
+                  ELSE 'C'
+                  END AS PAY_REFUND_STATUS,
+              ABS(A.MILEAGE_AMOUNT) - IFNULL(R.TOTAL_REFUND_AMOUNT, 0) AS MILEAGE_AMOUNT
+            FROM T_MILEAGE A
+            JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+            JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+            LEFT JOIN T_CALCULATE D ON A.MILEAGE_NO = D.MILEAGE_NO
+            LEFT JOIN Payment P ON A.REQUEST_FORM_NO = P.REQUEST_FORM_NO
+            LEFT JOIN Refund R ON A.REQUEST_FORM_NO = R.REQUEST_FORM_NO
+            WHERE A.MILEAGE_SE IN ('B','D')
+              AND C.MEMBER_NO = #{registerNo}
+              AND B.REQUEST_STATUS IN ('D', 'E')
+              AND A.CALCULATE_SE = 'N'
+          ) TB
+        WHERE TB.PAY_REFUND_STATUS IN ('A', 'C')
+          AND TB.MILEAGE_AMOUNT != 0
+    </select>
+
+    <insert id="insertEasyPay">
+        INSERT INTO T_PAYMENT_RESULT
+            (
+                  MOID
+                , AMOUNT
+                , REGISTER_NO
+            ) VALUES (
+                  #{moId}
+                , #{amount}
+                , #{registerNo}
+        )
+    </insert>
+
+    <select id="selectEasyPayment" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_PAYMENT_RESULT A
+        WHERE A.MOID = #{MOID}
+          AND A.RESULT_CODE IS NOT NULL
+    </select>
+
+    <update id="updateEasyPayment">
+        UPDATE T_PAYMENT_RESULT
+        SET
+              MID = #{MID}
+            , TID = #{TID}
+            , AUTH_DATE = #{AuthDate}
+            , AUTH_CODE = #{AuthCode}
+            , RESULT_CODE = #{ResultCode}
+            , RESULT_MSG = #{ResultMsg}
+            , ERROR_CODE = #{ErrorCode}
+            , ERROR_MSG = #{ErrorMsg}
+            , EPAY_CL = #{EPayCl}
+            , JSON_DATA = #{jsonData}
+        WHERE MOID = #{MOID}
+    </update>
+
+    <select id="selectEasyPaymentVerification" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_PAYMENT_RESULT A
+        WHERE A.MOID = #{MOID}
+          AND A.AMOUNT = #{Amt}
+    </select>
+
+    <insert id="insertPaypal">
+        INSERT INTO T_PAYPAL_RESULT
+            (
+                  MO_ID
+                , AMOUNT
+                , REGISTER_NO
+            ) VALUES (
+                  #{moId}
+                , #{amount}
+                , #{registerNo}
+            )
+    </insert>
+
+    <select id="selectPaypal" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_PAYPAL_RESULT A
+        WHERE A.MO_ID = #{moId}
+          AND A.TX_ID IS NOT NULL
+    </select>
+
+    <select id="selectPaypalPaymentVerification" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_PAYPAL_RESULT A
+        WHERE A.MO_ID = #{moId}
+          AND A.AMOUNT = #{Amt}
+    </select>
+
+    <update id="updatePaypal">
+        UPDATE T_PAYPAL_RESULT
+        SET
+            PAYMENT_ID = #{paymentId}
+          , TRANSACTION_TYPE = #{transactionType}
+          , TX_ID = #{txId}
+          , MILEAGE_NO = #{mileageNo}
+          , REAL_PAY_DT = NOW()
+        WHERE MO_ID = #{moId}
+    </update>
+
+    <select id="selectCalculateList" resultType="com.dentner.core.cmmn.vo.MileageVo">
+        SELECT * FROM (
+          WITH Payment AS (
+              SELECT
+                  REQUEST_FORM_NO, MILEAGE_NO, ABS(MILEAGE_AMOUNT) AS PAYMENT_AMOUNT, MILEAGE_UNIT
+              FROM T_MILEAGE
+              WHERE MILEAGE_SE = 'B'
+                AND MILEAGE_UNIT = #{mileageUnit}
+          ),
+               Refund AS (
+                   SELECT
+                       REQUEST_FORM_NO, SUM(ABS(MILEAGE_AMOUNT)) AS TOTAL_REFUND_AMOUNT
+                   FROM T_MILEAGE
+                   WHERE MILEAGE_SE = 'D'
+                   GROUP BY REQUEST_FORM_NO
+               )
+          SELECT DISTINCT
+              A.MILEAGE_UNIT,  A.MILEAGE_NO, A.MILEAGE_CN, A.CALCULATE_SE, A.MILEAGE_SE,
+              CASE
+                  WHEN R.TOTAL_REFUND_AMOUNT IS NULL THEN 'A'
+                  WHEN R.TOTAL_REFUND_AMOUNT >= ABS(A.MILEAGE_AMOUNT) THEN 'B'
+                  ELSE 'C'
+                  END AS PAY_REFUND_STATUS,
+              ABS(A.MILEAGE_AMOUNT) - IFNULL(R.TOTAL_REFUND_AMOUNT, 0) AS MILEAGE_AMOUNT
+          FROM T_MILEAGE A
+          JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+          JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+          LEFT JOIN T_CALCULATE D ON A.MILEAGE_NO = D.MILEAGE_NO
+          LEFT JOIN Payment P ON A.REQUEST_FORM_NO = P.REQUEST_FORM_NO
+          LEFT JOIN Refund R ON A.REQUEST_FORM_NO = R.REQUEST_FORM_NO
+          WHERE A.MILEAGE_SE IN ('B','D')
+            AND A.MILEAGE_UNIT = #{mileageUnit}
+            AND C.MEMBER_NO = #{registerNo}
+            AND B.REQUEST_STATUS IN ('D', 'E')
+            AND A.CALCULATE_SE = 'N'
+      ) TB
+        WHERE TB.PAY_REFUND_STATUS IN ('A', 'C')
+          AND TB.MILEAGE_AMOUNT != 0
+    </select>
+
+    <insert id="insertMileageCalculateGroup" useGeneratedKeys="true" keyProperty="calculateGroupNo">
+        INSERT INTO T_CALCULATE_GROUP
+            (
+                REGISTER_NO
+            ) VALUES (
+                #{registerNo}
+            )
+    </insert>
+
+    <update id="updateMileageCalculateGroup">
+        UPDATE T_CALCULATE_GROUP
+        SET CALCULATE_GROUP_AMOUNT = #{calculateGroupAmount}
+        WHERE CALCULATE_GROUP_NO = #{calculateGroupNo}
+    </update>
+</mapper>

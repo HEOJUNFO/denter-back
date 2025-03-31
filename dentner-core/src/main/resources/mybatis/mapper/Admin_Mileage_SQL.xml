@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminMileageMapper">
+    <select id="selectChargeList" resultType="com.dentner.core.cmmn.vo.AdminChargeVo">
+        SELECT
+            A.MILEAGE_NO,  MILEAGE_UNIT, MILEAGE_AMOUNT, A.REGISTER_DT,
+            CASE WHEN A.MILEAGE_UNIT = 'A' THEN '원화' ELSE '달러' END AS MILEAGE_UNIT_NAME,
+            CASE WHEN A.MILEAGE_UNIT = 'A' THEN  CASE  WHEN A.CARD_NO IS NOT NULL THEN 'CARD'  ELSE 'PAY'  END  ELSE '해외결제' END AS PAY_TYPE,
+            B.MEMBER_NAME, B.MEMBER_EMAIL, B.MEMBER_NO,  IF(C.MILEAGE_REFUND_NO, 'Y' , 'N') as REFUND_YN,
+            C.MILEAGE_REFUND_CN, C.REGISTER_DT as REFUND_DT, C.MILEAGE_STATUS,
+            FN_USER_NICKNM(B.MEMBER_NO) AS MEMBER_NICK_NAME,
+            CASE WHEN C.MILEAGE_STATUS = 'A' THEN '접수' WHEN C.MILEAGE_STATUS = 'B' THEN '완료' ELSE '' END AS MILEAGE_STATUS_NAME,
+            FN_CODE_NM(C.MILEAGE_REFUND_CODE_NO, 'NAME') AS MILEAGE_REFUND_CODE_NO_NAME
+        FROM T_MILEAGE A
+        LEFT JOIN T_MEMBER B on A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_MILEAGE_REFUND C on A.MILEAGE_NO = C.MILEAGE_NO
+        where 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',searchType)">
+            AND A.MILEAGE_SE IN ('A','C')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND (B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectChargeListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MILEAGE A
+        LEFT JOIN T_MEMBER B on A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_MILEAGE_REFUND C on A.MILEAGE_NO = C.MILEAGE_NO
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',searchType)">
+            AND A.MILEAGE_SE IN ('A','C')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND (B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectPayList" resultType="com.dentner.core.cmmn.vo.AdminPayVo">
+        WITH Payment AS (
+            SELECT
+                REQUEST_FORM_NO, MILEAGE_NO, ABS(MILEAGE_AMOUNT) AS PAYMENT_AMOUNT, MILEAGE_UNIT
+            FROM T_MILEAGE
+            WHERE MILEAGE_SE = 'B'
+              AND MILEAGE_UNIT = 'A'
+        ),
+        Refund AS (
+            SELECT
+                REQUEST_FORM_NO, SUM(ABS(MILEAGE_AMOUNT)) AS TOTAL_REFUND_AMOUNT
+            FROM T_MILEAGE
+            WHERE MILEAGE_SE = 'D'
+            GROUP BY REQUEST_FORM_NO
+        )
+        SELECT DISTINCT
+            A.MILEAGE_UNIT, A.MILEAGE_NO,
+            FN_REQUEST_STATUS_ORG_NM(B.REQUEST_STATUS) AS REQUEST_STATUS_NAME,
+            CASE WHEN A.MILEAGE_UNIT = 'A' THEN '원화' ELSE '달러' END AS MILEAGE_UNIT_NAME,
+            B.REQUEST_FORM_SJ, A.REGISTER_DT, ABS(A.MILEAGE_AMOUNT) AS MILEAGE_AMOUNT,
+            E.MEMBER_EMAIL, E.MEMBER_NAME, FN_USER_NICKNM(C.MEMBER_NO) AS MEMBER_NICK_NAME,
+            C.MEMBER_EMAIL AS DESIGNER_EMAIL, C.MEMBER_NAME AS DESIGNER_NAME, FN_USER_NICKNM(C.MEMBER_NO) AS DESIGNER_NICK_NAME,
+            D.CONFIRM_AT , A.MILEAGE_CN , A.MILEAGE_SE, F.MILEAGE_REFUND_CODE_NO , F.MILEAGE_REFUND_CN , F.REGISTER_DT AS REFUND_DT,
+            A.CALCULATE_SE AS CALCULATE_STATUS, F.REGISTER_DT as REFUND_DT, F.MILEAGE_STATUS,
+            (SELECT CODE_NAME  FROM T_CODE WHERE CODE_NO = C.MEMBER_BANK_NO) AS MEMBER_BANK_NO_NAME,
+            C.MEMBER_BANK_NO, C.MEMBER_ACCOUNT_NAME, C.MEMBER_ACCOUNT_NUMBER,
+            IF(F.MILEAGE_REFUND_NO, 'Y' , 'N') as REFUND_YN, F.MILEAGE_REFUND_CN,
+            CASE
+                WHEN R.TOTAL_REFUND_AMOUNT IS NULL THEN 'A'  -- 환불 없음
+                WHEN R.TOTAL_REFUND_AMOUNT >= ABS(A.MILEAGE_AMOUNT) THEN 'B'  -- 전체 환불
+                ELSE 'C'  -- 일부 환불
+            END AS PAY_REFUND_STATUS,
+            ABS(A.MILEAGE_AMOUNT) - IFNULL(R.TOTAL_REFUND_AMOUNT, 0) AS PAYMENT_AMOUNT,
+            CASE WHEN A.MILEAGE_UNIT = 'A' THEN  CASE  WHEN A.CARD_NO IS NOT NULL THEN 'CARD'  ELSE 'PAY'  END  ELSE '해외결제' END AS PAY_TYPE,
+            IF(B.REQUEST_DEAL_STATUS >= 'G', 'Y', 'N') as CAD_YN
+        FROM T_MILEAGE A
+        JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+        JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+        JOIN T_MEMBER E ON A.REGISTER_NO = E.MEMBER_NO
+        LEFT JOIN T_CALCULATE D ON A.MILEAGE_NO = D.MILEAGE_NO
+        LEFT JOIN Payment P ON A.REQUEST_FORM_NO = P.REQUEST_FORM_NO  -- 결제 정보
+        LEFT JOIN Refund R ON A.REQUEST_FORM_NO = R.REQUEST_FORM_NO   -- 환불 정보
+        LEFT JOIN T_MILEAGE_REFUND F on A.MILEAGE_NO = F.MILEAGE_NO
+        WHERE 1=1
+          AND B.REQUEST_STATUS IN ('D', 'E')
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',searchType)">
+            AND A.MILEAGE_SE IN ('B')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',searchType)">
+            AND A.MILEAGE_SE IN ('D')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            )
+        </if>
+        ORDER BY REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+
+    <select id="selectPayListCnt" resultType="int">
+        SELECT
+            COUNT(*)
+        FROM T_MILEAGE A
+        JOIN T_REQUEST_FORM B ON A.REQUEST_FORM_NO = B.REQUEST_FORM_NO
+        JOIN T_MEMBER C ON B.REQUEST_DESIGNER_NO = C.MEMBER_NO
+        JOIN T_MEMBER E ON A.REGISTER_NO = E.MEMBER_NO
+        LEFT JOIN T_CALCULATE D ON A.MILEAGE_NO = D.MILEAGE_NO
+        LEFT JOIN T_MILEAGE_REFUND F on A.MILEAGE_NO = F.MILEAGE_NO
+        WHERE 1=1
+        AND B.REQUEST_STATUS IN ('D', 'E')
+        <if test="@com.dentner.core.util.MybatisUtils@equals('A',searchType)">
+            AND A.MILEAGE_SE IN ('B')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@equals('B',searchType)">
+            AND A.MILEAGE_SE IN ('D')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR DESIGNER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            )
+        </if>
+    </select>
+
+    <select id="selectCalculateList" resultType="com.dentner.core.cmmn.vo.AdminCalculateVo">
+        SELECT
+            A.CALCULATE_NO, A.MILEAGE_NO, A.CALCULATE_AMOUNT, A.REGISTER_DT, A.REGISTER_NO,
+            B.MEMBER_EMAIL, B.MEMBER_NAME, FN_USER_NICKNM(B.MEMBER_NO) AS MEMBER_NICK_NAME,
+            (SELECT CODE_NAME  FROM T_CODE WHERE CODE_NO = B.MEMBER_BANK_NO) AS MEMBER_BANK_NO_NAME,
+            B.MEMBER_BANK_NO, B.MEMBER_ACCOUNT_NAME, B.MEMBER_ACCOUNT_NUMBER, A.BILL_AT, A.CONFIRM_AT,
+            (SELECT ABS(MILEAGE_AMOUNT) FROM T_MILEAGE WHERE MILEAGE_NO  = A.MILEAGE_NO AND DELETED_AT ='N') AS MILEAGE_AMOUNT,
+            (SELECT MILEAGE_UNIT FROM T_MILEAGE WHERE MILEAGE_NO  = A.MILEAGE_NO AND DELETED_AT ='N') AS MILEAGE_UNIT
+        FROM T_CALCULATE A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (B.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.REGISTER_DT DESC, A.CALCULATE_NO DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+
+    <select id="selectCalculateListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CALCULATE A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (B.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectRefundList" resultType="com.dentner.core.cmmn.vo.AdminRefundVo">
+        SELECT
+            A.MILEAGE_REFUND_NO, B.MILEAGE_UNIT, B.MILEAGE_AMOUNT, A.REGISTER_DT, A.MILEAGE_REFUND_CONFIRM_DT,
+            FN_USER_NICKNM(C.MEMBER_NO) AS MEMBER_NICK_NAME, A.MILEAGE_NO,
+            FN_CODE_NM(A.MILEAGE_REFUND_CODE_NO, 'NAME') AS MILEAGE_REFUND_CODE_NO_NAME,
+            B.REGISTER_NO, C.MEMBER_EMAIL, C.MEMBER_NAME, A.MILEAGE_REFUND_CODE_NO, A.MILEAGE_REFUND_CN,
+            CASE WHEN B.MILEAGE_UNIT = 'A' THEN '원화' ELSE '달러' END AS MILEAGE_UNIT_NAME
+        FROM T_MILEAGE_REFUND A
+        JOIN T_MILEAGE B ON A.MILEAGE_NO = B.MILEAGE_NO
+        JOIN T_MEMBER C ON B.REGISTER_NO = C.MEMBER_NO
+        WHERE 1=1
+          AND A.MILEAGE_REFUND_SE = #{searchType}
+          AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR C.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR C.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR A.MILEAGE_REFUND_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+	<select id="selectRefundAlarmList" resultType="com.dentner.core.cmmn.vo.AdminRefundVo">
+	 	SELECT
+	        A.MILEAGE_REFUND_NO, B.MILEAGE_UNIT, B.MILEAGE_AMOUNT, A.REGISTER_DT, A.MILEAGE_REFUND_CONFIRM_DT,
+	        FN_USER_NICKNM(C.MEMBER_NO) AS MEMBER_NICK_NAME, A.MILEAGE_NO,
+	        FN_CODE_NM(A.MILEAGE_REFUND_CODE_NO, 'NAME') AS MILEAGE_REFUND_CODE_NO_NAME,
+	        B.REGISTER_NO, C.MEMBER_EMAIL, C.MEMBER_NAME, A.MILEAGE_REFUND_CODE_NO, A.MILEAGE_REFUND_CN,
+	        CASE WHEN B.MILEAGE_UNIT = 'A' THEN '원화' ELSE '달러' END AS MILEAGE_UNIT_NAME,
+	        CASE B.MILEAGE_UNIT 
+				WHEN 'A' 
+					THEN CONCAT(ABS(B.MILEAGE_AMOUNT), 'P(￦)')
+				ELSE 
+					CONCAT(ABS(B.MILEAGE_AMOUNT), 'P($)')
+			END AS AMOUNT
+	    FROM T_MILEAGE_REFUND A
+	    JOIN T_MILEAGE B ON A.MILEAGE_NO = B.MILEAGE_NO
+	    JOIN T_MEMBER C ON B.REGISTER_NO = C.MEMBER_NO
+	    WHERE 1=1
+	    	A.MILEAGE_NO IN 
+	        <foreach item="item" index="index" collection="mileageNoArr.split(',')" open="(" separator="," close=")">
+	            #{item}
+	        </foreach>
+	</select>
+
+    <select id="selectRefundListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MILEAGE_REFUND A
+        JOIN T_MILEAGE B ON A.MILEAGE_NO = B.MILEAGE_NO
+        JOIN T_MEMBER C ON B.REGISTER_NO = C.MEMBER_NO
+        WHERE 1=1
+          AND A.MILEAGE_REFUND_SE = #{searchType}
+          AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR C.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR C.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR A.MILEAGE_REFUND_CN LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectDepositList" resultType="com.dentner.core.cmmn.vo.AdminDepositVo">
+        SELECT
+            A.MILEAGE_NO, A.MILEAGE_UNIT, ABS(A.MILEAGE_AMOUNT) AS MILEAGE_AMOUNT,
+            (SELECT REQUEST_FORM_SJ FROM T_REQUEST_FORM WHERE REQUEST_FORM_NO = A.REQUEST_FORM_NO) AS REQUEST_FORM_SJ,
+            B.MEMBER_EMAIL, B.MEMBER_NAME, FN_USER_NICKNM(B.MEMBER_NO) AS MEMBER_NICK_NAME, A.REGISTER_DT,
+            CASE WHEN A.MILEAGE_UNIT = 'A' THEN '원화' ELSE '달러' END AS MILEAGE_UNIT_NAME
+        FROM T_MILEAGE A
+        LEFT JOIN T_MEMBER B on A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_MILEAGE_REFUND C on A.MILEAGE_NO = C.MILEAGE_NO
+        WHERE 1=1
+          AND A.MILEAGE_SE IN ('B','D')
+          AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+
+    <select id="selectDepositListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_MILEAGE A
+        LEFT JOIN T_MEMBER B on A.REGISTER_NO = B.MEMBER_NO
+        LEFT JOIN T_MILEAGE_REFUND C on A.MILEAGE_NO = C.MILEAGE_NO
+        WHERE 1=1
+          AND A.MILEAGE_SE IN ('B','D')
+          AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <update id="updateApprovalRefund">
+        UPDATE T_MILEAGE_REFUND
+        SET   MILEAGE_STATUS = 'B'
+            , UPDATED_NO = #{registerNo}
+            , MILEAGE_REFUND_CONFIRM_DT = NOW()
+        WHERE MILEAGE_NO IN
+        <foreach item="item" index="index" collection="mileageNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="updateCalculateConfirm">
+        UPDATE T_CALCULATE
+        SET   CONFIRM_AT = #{stat}
+            , UPDATED_NO = #{memberNo}
+            , UPDATED_DT = NOW()
+        WHERE CALCULATE_NO = #{calculateNo}
+    </update>
+
+    <update id="updateMileageCalculateConfirm">
+        UPDATE T_MILEAGE
+        SET   CALCULATE_SE = #{calculateSe}
+          , UPDATED_NO = #{memberNo}
+          , UPDATED_DT = NOW()
+        WHERE MILEAGE_NO = (SELECT MILEAGE_NO FROM T_CALCULATE WHERE CALCULATE_NO = #{calculateNo})
+    </update>
+
+    <update id="updateMileageBillConfirm">
+        UPDATE T_CALCULATE
+        SET   BILL_AT = 'Y'
+          , UPDATED_NO = #{memberNo}
+          , UPDATED_DT = NOW()
+        WHERE CALCULATE_NO = #{calculateNo}
+    </update>
+
+    <select id="selectCalculateGroupList" resultType="com.dentner.core.cmmn.vo.AdminCalculateGroupVo">
+        SELECT
+            CALCULATE_GROUP_NO , CALCULATE_GROUP_AMOUNT , CONFIRM_AT , CONFIRM_NO , CONFIRM_DT , A.REGISTER_NO , A.REGISTER_DT,
+            FN_USER_NICKNM(B.MEMBER_NO) AS MEMBER_NICK_NAME,
+            FN_USER_NM(A.CONFIRM_NO) AS CONFIRM_NAME
+        FROM T_CALCULATE_GROUP A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        WHERE 1=1
+        AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (B.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+
+    <select id="selectCalculateGroupListCnt" resultType="int">
+        SELECT
+            COUNT(*) AS CNT
+        FROM T_CALCULATE_GROUP A
+        JOIN T_MEMBER B ON A.REGISTER_NO = B.MEMBER_NO
+        WHERE 1=1
+        AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (B.MEMBER_EMAIL LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR B.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+    </select>
+
+    <select id="selectCalculateGroup" resultType="com.dentner.core.cmmn.vo.AdminCalculateVo">
+        SELECT
+            A.CALCULATE_NO, A.MILEAGE_NO, A.CALCULATE_AMOUNT, A.REGISTER_DT, A.REGISTER_NO
+        FROM T_CALCULATE A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.CALCULATE_GROUP_NO = #{calculateGroupNo}
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+
+    <update id="updateCalculateGroupConfirm">
+        UPDATE T_CALCULATE_GROUP
+        SET   CONFIRM_AT = 'Y'
+          , CONFIRM_NO = #{memberNo}
+          , CONFIRM_DT = NOW()
+        WHERE CALCULATE_GROUP_NO = #{calculateGroupNo}
+    </update>
+</mapper>

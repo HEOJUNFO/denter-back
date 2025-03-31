@@ -1,0 +1,338 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminMemberMapper">
+    <select id="selectMemberList" resultType="com.dentner.core.cmmn.vo.MemberVo">
+        SELECT
+            A.MEMBER_SE, A.MEMBER_EMAIL, A.MEMBER_TP, A.MEMBER_NAME, E.MEMBER_NICK_NAME, A.MEMBER_HP, A.MEMBER_HP_NATION,
+            A.MEMBER_DENTISTRY_NAME, A.MEMBER_LICENSE_NUMBER, A.MEMBER_NO, A.REGISTER_DT, B.SOCIAL_SE, C.REGISTER_DT AS MEMBER_BLACK_DT,
+            A.MEMBER_JOB_SE, A.MEMBER_BUSINESS_NAME, A.MEMBER_REPRESENTATIVE_NAME, D.REGISTER_DT AS MEMBER_OUT_DT, D.MAIL_AT,
+            A.MEMBER_LAST_NAME, A.MEMBER_FIRST_NAME, A.MEMBER_BUSINESS_NUMBER,  A.MEMBER_ALARM_AT, A.MEMBER_ALARM_SE,
+            CASE WHEN B.SOCIAL_SE IS NULL THEN '이메일가입' ELSE 'SNS가입' END AS SOCIAL_SE_NAME, A.DELETED_DT, C.REGISTER_DT AS BLACK_REGISTER_DT,
+            CASE WHEN A.MEMBER_JOB_SE = 'A' THEN '치과' WHEN A.MEMBER_JOB_SE = 'B' THEN '치과기공소' WHEN A.MEMBER_JOB_SE = 'C' THEN '밀링센터' ELSE '기타' END AS MEMBER_JOB_SE_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'A' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_LICENSE_FILE,
+            (SELECT FILE_REAL_NAME FROM T_FILE WHERE FILE_SE = 'A' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_LICENSE_REAL_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'B' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_BUSINESS_FILE,
+            (SELECT FILE_REAL_NAME FROM T_FILE WHERE FILE_SE = 'B' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_BUSINESS_REAL_NAME
+        FROM T_MEMBER A
+        LEFT JOIN T_SOCIAL B ON A.MEMBER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER_BLACK C ON A.MEMBER_NO = C.MEMBER_NO
+        LEFT JOIN T_MEMBER_OUT D ON A.MEMBER_NO = D.MEMBER_NO
+        LEFT JOIN T_MEMBER_PROFILE E ON A.MEMBER_NO = E.MEMBER_NO AND E.MEMBER_SE = #{memberSe}
+        WHERE 1=1
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchSe)">
+            <choose>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('A', searchSe)">
+                    AND A.MEMBER_APPROVAL_SE = 'A' AND A.DELETED_AT = 'N'
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('B', searchSe)">
+                    AND A.MEMBER_APPROVAL_SE = 'B' AND A.DELETED_AT = 'N'
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('C', searchSe)">
+                    AND D.MEMBER_NO IS NOT NULL AND D.CONFIRM_DT IS NULL AND A.DELETED_AT = 'N'
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('D', searchSe)">
+                    AND A.DELETED_AT = 'Y'
+                    AND EXISTS (
+                        SELECT 1 FROM T_REQUEST_FORM R
+                        WHERE R.REGISTER_NO = A.MEMBER_NO OR R.REQUEST_DESIGNER_NO = A.MEMBER_NO
+                    )
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('E', searchSe)">
+                    AND A.DELETED_AT = 'Y'
+                    AND NOT EXISTS (
+                        SELECT 1 FROM T_REQUEST_FORM R
+                        WHERE R.REGISTER_NO = A.MEMBER_NO OR R.REQUEST_DESIGNER_NO = A.MEMBER_NO
+                    )
+                </when>
+                <otherwise>
+                    AND C.MEMBER_NO IS NOT NULL
+                </otherwise>
+            </choose>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberSe)">
+            AND A.MEMBER_SE = #{memberSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberTp)">
+            AND A.MEMBER_TP = #{memberTp}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (A.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR A.MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(registerSe)">
+            <choose>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('A', registerSe)">
+                    AND B.SOCIAL_SE IS NULL
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('B', registerSe)">
+                    AND B.SOCIAL_SE IS NOT NULL
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('C', registerSe)">
+                    AND A.MEMBER_MARKETING_AT = 'Y'
+                </when>
+            </choose>
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+        LIMIT #{startRow}, #{pageCnt}
+    </select>
+
+    <select id="selectMemberListCnt" resultType="int">
+        SELECT COUNT(*) AS CNT
+            FROM (SELECT
+                    MEMBER_EMAIL
+            FROM T_MEMBER A
+            LEFT JOIN T_SOCIAL B ON A.MEMBER_NO = B.MEMBER_NO
+            LEFT JOIN T_MEMBER_BLACK C ON A.MEMBER_NO = C.MEMBER_NO
+            LEFT JOIN T_MEMBER_OUT D ON A.MEMBER_NO = D.MEMBER_NO
+            WHERE 1=1
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchSe)">
+                <choose>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('A', searchSe)">
+                        AND A.MEMBER_APPROVAL_SE = 'A' AND A.DELETED_AT = 'N'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('B', searchSe)">
+                        AND A.MEMBER_APPROVAL_SE = 'B' AND A.DELETED_AT = 'N'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('C', searchSe)">
+                        AND D.MEMBER_NO IS NOT NULL AND D.CONFIRM_DT IS NULL AND A.DELETED_AT = 'N'
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('D', searchSe)">
+                        AND A.DELETED_AT = 'Y'
+                        AND EXISTS (
+                            SELECT 1 FROM T_REQUEST_FORM R
+                            WHERE R.REGISTER_NO = A.MEMBER_NO OR R.REQUEST_DESIGNER_NO = A.MEMBER_NO
+                        )
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('E', searchSe)">
+                        AND A.DELETED_AT = 'Y'
+                        AND NOT EXISTS (
+                            SELECT 1 FROM T_REQUEST_FORM R
+                            WHERE R.REGISTER_NO = A.MEMBER_NO OR R.REQUEST_DESIGNER_NO = A.MEMBER_NO
+                        )
+                    </when>
+                    <otherwise>
+                        AND C.MEMBER_NO IS NOT NULL
+                    </otherwise>
+                </choose>
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberSe)">
+                AND A.MEMBER_SE = #{memberSe}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberTp)">
+                AND A.MEMBER_TP = #{memberTp}
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+                AND A.REGISTER_DT BETWEEN
+                STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+                AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+                AND
+                (A.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+                OR A.MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+            </if>
+            <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(registerSe)">
+                <choose>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('A', registerSe)">
+                        AND B.SOCIAL_SE IS NULL
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('B', registerSe)">
+                        AND B.SOCIAL_SE IS NOT NULL
+                    </when>
+                    <when test="@com.dentner.core.util.MybatisUtils@equals('C', registerSe)">
+                        AND A.MEMBER_MARKETING_AT = 'Y'
+                    </when>
+                </choose>
+            </if>
+        ) TB
+    </select>
+
+    <select id="selectMemberDetail" resultType="com.dentner.core.cmmn.vo.MemberVo">
+        SELECT
+            A.MEMBER_SE, A.MEMBER_EMAIL, A.MEMBER_TP, A.MEMBER_NAME, E.MEMBER_NICK_NAME, A.MEMBER_HP, A.MEMBER_HP_NATION,
+            A.MEMBER_DENTISTRY_NAME, A.MEMBER_LICENSE_NUMBER, A.MEMBER_NO, A.REGISTER_DT, B.SOCIAL_SE, D.REGISTER_DT AS MEMBER_BLACK_DT,
+            A.MEMBER_JOB_SE, A.MEMBER_BUSINESS_NAME, A.MEMBER_REPRESENTATIVE_NAME, D.REGISTER_DT AS MEMBER_OUT_DT, D.MAIL_AT,
+            A.MEMBER_LAST_NAME, A.MEMBER_FIRST_NAME, A.MEMBER_MARKETING_AT, A.MEMBER_MARKETING_DT, A.MEMBER_TIMEZONE_NO, A.MEMBER_BUSINESS_NUMBER,
+            A.MEMBER_ADDRESS, A.MEMBER_DETAIL_ADDRESS, A.MEMBER_ALARM_AT, A.MEMBER_ALARM_SE,
+            (SELECT CODE_NAME  FROM T_CODE WHERE CODE_NO = A.MEMBER_BANK_NO) AS MEMBER_ACCOUNT_BANK_NO,
+            FN_CODE_NM(A.MEMBER_TIMEZONE_NO, 'NAME') AS MEMBER_TIMEZONE_NO_NAME, A.MEMBER_BANK_NO, A.MEMBER_ACCOUNT_NAME, A.MEMBER_ACCOUNT_NUMBER,
+            CASE WHEN B.SOCIAL_SE IS NULL THEN '이메일가입' ELSE 'SNS가입' END AS SOCIAL_SE_NAME, A.DELETED_DT,
+            CASE WHEN A.MEMBER_JOB_SE = 'A' THEN '치과' WHEN A.MEMBER_JOB_SE = 'B' THEN '치과기공소' WHEN A.MEMBER_JOB_SE = 'C' THEN '밀링센터' ELSE '기타' END AS MEMBER_JOB_SE_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'A' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_LICENSE_FILE,
+            (SELECT FILE_REAL_NAME FROM T_FILE WHERE FILE_SE = 'A' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_LICENSE_REAL_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'B' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_BUSINESS_FILE,
+            (SELECT FILE_REAL_NAME FROM T_FILE WHERE FILE_SE = 'B' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_BUSINESS_REAL_NAME
+        FROM T_MEMBER A
+            LEFT JOIN T_SOCIAL B ON A.MEMBER_NO = B.MEMBER_NO
+            LEFT JOIN T_MEMBER_BLACK C ON A.MEMBER_NO = C.MEMBER_NO
+            LEFT JOIN T_MEMBER_OUT D ON A.MEMBER_NO = D.MEMBER_NO
+            LEFT JOIN T_MEMBER_PROFILE E ON A.MEMBER_NO = E.MEMBER_NO AND A.MEMBER_SE = E.MEMBER_SE
+        WHERE 1=1
+          -- AND A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <update id="deleteMember">
+        UPDATE T_MEMBER
+        SET
+            DELETED_AT = 'Y'
+            , DELETED_DT = NOW()
+        WHERE MEMBER_NO = #{memberNo}
+    </update>
+
+    <update id="updateMember">
+        UPDATE T_MEMBER
+        SET
+            MEMBER_NAME = #{memberName}
+          , MEMBER_PASSWORD = #{memberPassword}
+          , MEMBER_CONTACT1_NATION = #{memberContact1Nation}
+          , MEMBER_CONTACT1 = #{memberContact1}
+          , MEMBER_CONTACT2_NATION = #{memberContact2Nation}
+          , MEMBER_CONTACT2 = #{memberContact2}
+          , MEMBER_NATIONALITY = #{memberNationality}
+          , MEMBER_LANGUAGE = #{memberLanguage}
+          , MEMBER_BIRTHDAY = #{memberBirthday}
+          , WHATS_APP_ID = #{whatsAppId}
+          , KAKAOTALK_ID = #{kakaotalkId}
+          , LINKEDIN_ID = #{linkedinId}
+          , UPDATED_DT = NOW()
+        WHERE
+            MEMBER_NO = #{memberNo}
+    </update>
+
+    <update id="updateApprovalMember">
+        UPDATE T_MEMBER
+        SET
+            MEMBER_APPROVAL_SE = 'B'
+          , UPDATED_NO = #{registerNo}
+          , UPDATED_DT = NOW()
+        WHERE MEMBER_NO IN
+        <foreach item="item" index="index" collection="memberNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="updateApprovalRejectMember">
+        UPDATE T_MEMBER
+        SET
+            MEMBER_APPROVAL_SE = 'C'
+          , UPDATED_NO = #{registerNo}
+          , UPDATED_DT = NOW()
+        WHERE MEMBER_NO IN
+        <foreach item="item" index="index" collection="memberNoArr.split(',')" open="(" separator="," close=")">
+            #{item}
+        </foreach>
+    </update>
+
+    <update id="updateOutApprovalMember">
+        UPDATE T_MEMBER_OUT
+        SET
+          CONFIRM_DT = NOW()
+        WHERE
+            MEMBER_NO = #{memberNo}
+    </update>
+    
+    <update id="updateMemberOut">
+        UPDATE T_MEMBER
+        SET
+            DELETED_AT = 'Y'
+          , UPDATED_NO = #{registerNo}
+          , UPDATED_DT = NOW()
+        WHERE
+            MEMBER_NO = #{memberNo}
+    </update>
+
+    <select id="selectApprovalMember" resultType="com.dentner.core.cmmn.dto.AlarmTalkDto">
+        SELECT
+            A.MEMBER_HP AS RECEIVER_NUM, A.MEMBER_EMAIL AS REQUEST_EMAIL, A.MEMBER_SE, A.MEMBER_TP, A.MEMBER_NO
+        FROM T_MEMBER A
+        WHERE 1=1
+          AND A.DELETED_AT = 'N'
+          AND A.MEMBER_NO = #{memberNo}
+    </select>
+
+    <update id="deleteRealMember">
+        DELETE FROM T_MEMBER
+        WHERE MEMBER_NO = #{memberNo}
+    </update>
+
+    <select id="selectMemberExcelList" resultType="com.dentner.core.cmmn.vo.MemberVo">
+        SELECT
+            A.MEMBER_SE, A.MEMBER_EMAIL, A.MEMBER_TP, A.MEMBER_NAME, E.MEMBER_NICK_NAME, A.MEMBER_HP, A.MEMBER_HP_NATION,
+            A.MEMBER_DENTISTRY_NAME, A.MEMBER_LICENSE_NUMBER, A.MEMBER_NO, A.REGISTER_DT, B.SOCIAL_SE, D.REGISTER_DT AS MEMBER_BLACK_DT,
+            A.MEMBER_JOB_SE, A.MEMBER_BUSINESS_NAME, A.MEMBER_REPRESENTATIVE_NAME, D.REGISTER_DT AS MEMBER_OUT_DT, D.MAIL_AT,
+            A.MEMBER_LAST_NAME, A.MEMBER_FIRST_NAME, A.MEMBER_BUSINESS_NUMBER,
+            CASE WHEN B.SOCIAL_SE IS NULL THEN '이메일가입' ELSE 'SNS가입' END AS SOCIAL_SE_NAME, A.DELETED_DT, C.REGISTER_DT AS BLACK_REGISTER_DT,
+            CASE WHEN A.MEMBER_JOB_SE = 'A' THEN '치과' WHEN A.MEMBER_JOB_SE = 'B' THEN '치과기공소' WHEN A.MEMBER_JOB_SE = 'C' THEN '밀링센터' ELSE '기타' END AS MEMBER_JOB_SE_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'A' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_LICENSE_FILE,
+            (SELECT FILE_REAL_NAME FROM T_FILE WHERE FILE_SE = 'A' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_LICENSE_REAL_NAME,
+            (SELECT FILE_URL FROM T_FILE WHERE FILE_SE = 'B' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_BUSINESS_FILE,
+            (SELECT FILE_REAL_NAME FROM T_FILE WHERE FILE_SE = 'B' AND FILE_FROM_NO = A.MEMBER_NO AND DELETED_AT = 'N' ORDER BY REGISTER_DT DESC LIMIT 1) AS MEMBER_BUSINESS_REAL_NAME
+        FROM T_MEMBER A
+        LEFT JOIN T_SOCIAL B ON A.MEMBER_NO = B.MEMBER_NO
+        LEFT JOIN T_MEMBER_BLACK C ON A.MEMBER_NO = C.MEMBER_NO
+        LEFT JOIN T_MEMBER_OUT D ON A.MEMBER_NO = D.MEMBER_NO
+        LEFT JOIN T_MEMBER_PROFILE E ON A.MEMBER_NO = E.MEMBER_NO AND E.MEMBER_SE = #{memberSe}
+        WHERE 1=1
+        AND A.DELETED_AT = 'N'
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchSe)">
+            <choose>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('A', searchSe)">
+                    AND A.MEMBER_APPROVAL_SE = 'A'
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('B', searchSe)">
+                    AND A.MEMBER_APPROVAL_SE = 'B'
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('C', searchSe)">
+                    AND D.MEMBER_NO IS NOT NULL
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('D', searchSe)">
+                    AND A.DELETED_AT = 'Y'
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('E', searchSe)">
+                    AND A.DELETED_AT = 'Y'
+                </when>
+                <otherwise>
+                    AND C.MEMBER_NO IS NOT NULL
+                </otherwise>
+            </choose>
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberSe)">
+            AND A.MEMBER_SE = #{memberSe}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(memberTp)">
+            AND A.MEMBER_TP = #{memberTp}
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(fromDateFilter)">
+            AND A.REGISTER_DT BETWEEN
+            STR_TO_DATE(CONCAT(#{fromDateFilter}, ' 00:00:00'), '%Y-%m-%d %H:%i:%s')
+            AND STR_TO_DATE(CONCAT(#{toDateFilter}, ' 23:59:59'), '%Y-%m-%d %H:%i:%s')
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(searchKeyword)">
+            AND
+            (A.MEMBER_NAME LIKE CONCAT('%', #{searchKeyword}, '%')
+            OR A.MEMBER_NICK_NAME LIKE CONCAT('%', #{searchKeyword}, '%'))
+        </if>
+        <if test="@com.dentner.core.util.MybatisUtils@isNotEmpty(registerSe)">
+            <choose>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('A', registerSe)">
+                    AND B.SOCIAL_SE IS NULL
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('B', registerSe)">
+                    AND B.SOCIAL_SE IS NOT NULL
+                </when>
+                <when test="@com.dentner.core.util.MybatisUtils@equals('C', registerSe)">
+                    AND A.MEMBER_MARKETING_AT = 'Y'
+                </when>
+            </choose>
+        </if>
+        ORDER BY A.REGISTER_DT DESC
+    </select>
+</mapper>

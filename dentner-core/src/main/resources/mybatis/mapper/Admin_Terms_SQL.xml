@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<mapper namespace="com.dentner.core.cmmn.mapper.AdminTermsMapper">
+
+	<select id="selectTermsInfo" resultType="com.dentner.core.cmmn.vo.TermsVo">
+		SELECT
+			TERMS_NO, TERMS_CN, TERMS_SE
+		FROM T_TERMS
+		WHERE TERMS_SE  = #{termsSe}
+	</select>
+
+	<update id="updateTermsInfo">
+		UPDATE T_TERMS
+		SET
+			  TERMS_CN = #{termsCn}
+			, UPDATED_DT = NOW()
+			, UPDATED_NO = #{registerNo}
+		WHERE TERMS_SE = #{termsSe}
+
+	</update>
+</mapper>
