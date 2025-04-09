@@ -3,6 +3,7 @@ package com.dentner.front.config;
 import com.dentner.core.cmmn.dto.AlarmAddDto;
 import com.dentner.core.cmmn.dto.AlarmTalkDto;
 import com.dentner.core.cmmn.dto.MailDto;
+import com.dentner.core.cmmn.dto.PushDto;
 import com.dentner.core.cmmn.mapper.FrontTransactionMapper;
 import com.dentner.core.cmmn.service.MailService;
 import com.dentner.core.cmmn.vo.RequestTaskVo;
@@ -115,7 +116,49 @@ public class ScheduledTasksConfig {
                     }
                 }
 
-                if("B".equals(alarmTalkDto.getRequestFormSe())){   // 지정 요청
+                // 치자이너 앱 알림 확인.
+                int cnt3 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 4);
+                if (cnt3 > 0) { // 알림이 켜져 있음.
+                    // 알림 메세지 발송
+                    AlarmAddDto alarmAddDto = new AlarmAddDto();
+                    alarmAddDto.setAlarmSj("납품 마감");
+                    String cn = ConstUtil.DESIGNER_OPEN_MSG7;
+                    String message = cn.replace("#{의뢰인}", alarmTalkDto.getRequestNickName())
+                            .replace("#{요청서}", alarmTalkDto.getRequestFormSj());
+                    alarmAddDto.setAlarmCn(message);
+                    alarmAddDto.setAlarmSe("D");
+                    alarmAddDto.setAlarmUrl("/payment");
+                    alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
+
+                    commonService.postAlarm(alarmAddDto);
+
+                    PushDto push = new PushDto();
+                    push.setBody(message);
+                    commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/payment");
+                }
+
+                // 치자이너 앱 알림 확인.
+                int cnt2 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 10);
+                if (cnt2 > 0) { // 알림이 켜져 있음.
+                    // 알림 메세지 발송
+                    AlarmAddDto alarmAddDto = new AlarmAddDto();
+                    alarmAddDto.setAlarmSj("납품 마감");
+                    String cn = ConstUtil.DESIGNER_OPEN_MSG7;
+                    String message = cn.replace("#{의뢰인}", alarmTalkDto.getRequestNickName())
+                            .replace("#{요청서}", alarmTalkDto.getRequestFormSj());
+                    alarmAddDto.setAlarmCn(message);
+                    alarmAddDto.setAlarmSe("D");
+                    alarmAddDto.setAlarmUrl("/payment");
+                    alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
+
+                    commonService.postAlarm(alarmAddDto);
+
+                    PushDto push = new PushDto();
+                    push.setBody(message);
+                    commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/payment");
+                }
+
+                //if("B".equals(alarmTalkDto.getRequestFormSe())){   // 지정 요청
                     int cnt1 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 4);
                     if (cnt1 > 0) {
                         // 2025-03-05 cjj 로그인한 사람이 국내/해외 의뢰인인지 확인.
@@ -125,22 +168,22 @@ public class ScheduledTasksConfig {
                         String cn = "";
                         if("A".equals(memberTp)){
                             sj = "납품 마감";
-                            cn = ConstUtil.REQUEST_TARGET_MSG3;
+                            cn = ConstUtil.REQUEST_OPEN_MSG17;
                         }else{
                             sj = "Deadline";
-                            cn = ConstUtil.REQUEST_TARGET_ENG_MSG3;
+                            cn = ConstUtil.REQUEST_OPEN_ENG_MSG17;
                         }
-                        // 납품마감이 지났을 경우 알림 보내기
                         AlarmAddDto alarmAddDto = new AlarmAddDto();
                         alarmAddDto.setAlarmSj(sj);
-                        String message1 = cn;
+                        String message1 = cn.replace("#{치자이너}", alarmTalkDto.getDesignerNickName())
+                                .replace("#{요청서}", alarmTalkDto.getRequestFormSj());
                         alarmAddDto.setAlarmCn(message1);
                         alarmAddDto.setAlarmSe("D");
                         alarmAddDto.setAlarmUrl(requestTaskVo.getRequestFormNo().toString());
                         alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getRegisterNo()));
                         commonService.postAlarm(alarmAddDto);
                     }
-                }
+                //}
 
                 frontTransactionMapper.updateRequestDeadline(requestTaskVo.getRequestFormNo(), 0);
             }

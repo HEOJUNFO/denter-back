@@ -503,4 +503,8 @@ public class CommonService {
 	public String selectMemberTp(int memberNo) {
 		return commonMapper.selectMemberTp(memberNo);
 	}
+
+	public String selectMileageAmountMile(Integer mileageNo) {
+		return commonMapper.selectMileageAmountMile(mileageNo);
+	}
 }

@@ -441,22 +441,27 @@ public class MileageService {
 			// 회원유형 (A:한국인, B:외국인)
 			String memberTp = commonService.selectMemberTp(SecurityUtil.getMemberNo());
 			String msg = "";
+			String cn = "";
 			if("A".equals(memberTp)){
 				msg = "마일리지 환불 신청완료";
+				cn = ConstUtil.REQUEST_OPEN_MSG16;
 			}else{
 				msg = "Mileage refund requested";
+				cn = ConstUtil.REQUEST_OPEN_ENG_MSG16;
 			}
 
-        	String content = commonService.selectMileageAmount(mileageRefundAddDto.getMileageNo());
-        	PushDto push = new PushDto();
-        	
-        	push.setBody(msg + " " + content);
+        	String content = commonService.selectMileageAmountMile(mileageRefundAddDto.getMileageNo());
+
+			String message1 = cn.replace("#{마일리지}", content);
+
+			PushDto push = new PushDto();
+			push.setBody(message1);
         	commonService.postFCMPush(SecurityUtil.getMemberNo(), push, "/mileage");
-        	
-            
+
             AlarmAddDto alarmAddDto = new AlarmAddDto();
             alarmAddDto.setAlarmSj(msg);
-            alarmAddDto.setAlarmCn(msg + " " + content);
+            //alarmAddDto.setAlarmCn(msg + " " + content);
+            alarmAddDto.setAlarmCn(message1);
             alarmAddDto.setAlarmSe("F");
             alarmAddDto.setAlarmUrl("");
             alarmAddDto.setMemberNo(SecurityUtil.getMemberNo());

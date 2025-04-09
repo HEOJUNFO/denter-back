@@ -232,12 +232,12 @@ public class TransactionService {
             	String msg = "마일리지 입금 " + alarmTalkDto.getAmount() +"/" + alarmTalkDto.getRequestNickName();
             	
                 push.setBody(msg);
-                commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/mileageOffice");
+                //commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/mileageOffice");
 
 				alarmAddDto.setAlarmSj("마일리지 입금");
                 alarmAddDto.setAlarmCn(msg);
             	alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
-            	commonService.postAlarm(alarmAddDto);
+            	//commonService.postAlarm(alarmAddDto);
             }
 
 		}
@@ -431,12 +431,13 @@ public class TransactionService {
 				if (cnt1 > 0) { // 앱 알림이 켜져 있음.
 					String cn = "";
 					if("A".equals(memberTp)){
-						cn = ConstUtil.REQUEST_OPEN_MSG4;
+						cn = ConstUtil.REQUEST_OPEN_MSG12;
 					}else{
-						cn = ConstUtil.REQUEST_OPEN_ENG_MSG4;
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG12;
 					}
 					// 알림보내기.
-					String message = cn.replace("{치자이너 닉네임}", alarmTalkDto.getDesignerNickName());
+					String message = cn.replace("#{치자이너}", alarmTalkDto.getDesignerNickName())
+							.replace("#{요청서명}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl(url);
@@ -475,11 +476,13 @@ public class TransactionService {
 				if (cnt1 > 0) { // 앱 알림이 켜져 있음.
 					String cn = "";
 					if("A".equals(memberTp)){
-						cn = ConstUtil.REQUEST_OPEN_MSG6;
+						cn = ConstUtil.REQUEST_OPEN_MSG13;
 					}else{
-						cn = ConstUtil.REQUEST_OPEN_ENG_MSG6;
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG13;
 					}
-					String message = cn;
+					// 알림보내기.
+					String message = cn.replace("#{치자이너}", alarmTalkDto.getDesignerNickName())
+							.replace("#{요청서명}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl(url);
@@ -526,13 +529,14 @@ public class TransactionService {
 					// 알림보내기.
 					String cn = "";
 					if("A".equals(memberTp)){
-						cn = ConstUtil.REQUEST_OPEN_MSG3;
+						cn = ConstUtil.REQUEST_OPEN_MSG14;
 					}else{
-						cn = ConstUtil.REQUEST_OPEN_ENG_MSG3;
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG14;
 					}
 
 					// 알림보내기.
-					String message = cn.replace("{치자이너 닉네임}", alarmTalkDto.getDesignerNickName());
+					String message = cn.replace("#{치자이너}", alarmTalkDto.getDesignerNickName())
+							.replace("#{요청서명}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl(url);
@@ -758,16 +762,17 @@ public class TransactionService {
 					cn = ConstUtil.DESIGNER_TARGET_MSG7;
 					String message1 = cn.replace("#{의뢰인}", alarmTalkDto.getRequestNickName())
 							.replace("#{project_name}", alarmTalkDto.getRequestFormSj());
+					alarmAddDto.setAlarmSj("의뢰서 수령");
 					alarmAddDto.setAlarmCn(message1);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl("/payment");
-					alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getRegisterNo()));
+					alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
 					commonService.postAlarm(alarmAddDto);
 
 					// FCM
 					PushDto push = new PushDto();
-					push.setBody(message);
-					commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment");
+					push.setBody(message1);
+					commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/payment");
 				}
 			}
 			
@@ -775,18 +780,23 @@ public class TransactionService {
 			if (isAlarm > 0) {
 				
 				String cn = commonService.selectMileageAmount(requestFormNo);
-
+				String content = "";
 				if("A".equals(memberTp)){
 					sj = "결제완료";
+					content = ConstUtil.REQUEST_OPEN_MSG15;
 				}else{
 					sj = "Payment complete";
+					content = ConstUtil.REQUEST_OPEN_ENG_MSG15;
 				}
-				
+
+				String message1 = content.replace("#{마일리지}", cn);
+
             	String msg = sj + cn + "/" + alarmTalkDto.getDesignerNickName();
             			
             	// 알림 메세지 발송
             	alarmAddDto.setAlarmSj(sj);
-            	alarmAddDto.setAlarmCn(cn + "/" + alarmTalkDto.getDesignerNickName());
+            	//alarmAddDto.setAlarmCn(cn + "/" + alarmTalkDto.getDesignerNickName());
+            	alarmAddDto.setAlarmCn(message1);
             	alarmAddDto.setAlarmSe("F");
             	alarmAddDto.setAlarmUrl("/payment");
             	alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getRegisterNo()));
@@ -794,7 +804,7 @@ public class TransactionService {
             	
             	// FCM
             	PushDto push = new PushDto();
-                push.setBody(msg);
+                push.setBody(message1);
                 commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment");
             }
 			
@@ -914,7 +924,7 @@ public class TransactionService {
 				int chatNo = chatService.postChat(chatRoomNo, chatAddDto);
 			}*/
 
-		}else{
+		}else{ // 요청 거절
 			result = frontTransactionMapper.updateRequestStatus(requestFormNo, "E", SecurityUtil.getMemberNo());
 			if(result > 0){
 				result += frontTransactionMapper.insertTransactionRefuse(requestFormContractDto);
@@ -933,16 +943,16 @@ public class TransactionService {
 				String cn = "";
 				if("A".equals(memberTp)){
 					msg = "요청 거절";
-					cn = ConstUtil.REQUEST_TARGET_MSG2;
+					cn = ConstUtil.REQUEST_OPEN_MSG20;
 				}else{
 					msg = "Req Reject";
-					cn = ConstUtil.REQUEST_TARGET_ENG_MSG2;
+					cn = ConstUtil.REQUEST_OPEN_ENG_MSG20;
 				}
 
 				// 알림 메세지 발송
 				AlarmAddDto alarmAddDto = new AlarmAddDto();
 				alarmAddDto.setAlarmSj(msg);
-				String message = cn;
+				String message = cn.replace("#{요청서}", alarmTalkDto.getRequestFormSj());
 				alarmAddDto.setAlarmCn(message);
 				alarmAddDto.setAlarmSe("D");
 				alarmAddDto.setAlarmUrl(requestFormNo.toString());
@@ -1121,7 +1131,7 @@ public class TransactionService {
 		int ct = 0;
 
 		if("A".equals(requestFormSe)){
-			ct = frontTransactionMapper.selectTransactionEstimateReceive(requestFormNo);
+			ct = frontTransactionMapper.selectTransactionEstimateReceive(requestFormNo, SecurityUtil.getMemberNo());
 			if(ct > 0){
 				return 1;
 			}
@@ -1260,10 +1270,10 @@ public class TransactionService {
             	alarmAddDto.setAlarmSe("F");
             	alarmAddDto.setAlarmUrl("");
             	alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
-            	commonService.postAlarm(alarmAddDto);
+            	//commonService.postAlarm(alarmAddDto);
             	
             	push.setBody("마일리지 입금 "+mileageAddDto.getToContents());
-            	commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/mileageOffice");
+            	//commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/mileageOffice");
             }
         }
 		
@@ -1509,113 +1519,24 @@ public class TransactionService {
 		AlarmTalkDto alarmTalkDto = new AlarmTalkDto();
 		if(result > 0){
 			result =+ frontTransactionMapper.insertTransactionCancel(requestFormCancelDto);
-
 			alarmTalkDto = commonService.selectRequestInfo(requestFormNo);
-
-			/*
-			2024-10-02 jjchoi
-			@최정주 @박성현
-			최종적으로 정리된 내용 공유드립니다.
-			아래로 작업 부탁드려요!
-			1.채팅 내 거래내역 빼기
-			2.채팅은 알림톡에서 아예 빼기
-			*/
-			/*ChatRoomAddDto chatRoomAddDto = new ChatRoomAddDto();
-			chatRoomAddDto = frontTransactionMapper.selectTransactionChat(requestFormNo);
-
-			if("B".equals(chatRoomAddDto.getRequestFormSe())){	// 지정 요청시에만 채팅을 보낸다.
-				//채팅처리 예제
-				chatRoomAddDto.setMemberSe("C");
-
-				ChatRoomDto chatRoomDto = new ChatRoomDto();
-				chatRoomDto.setMemberNo(chatRoomAddDto.getRequestNo());
-				chatRoomDto.setTargetSe(chatRoomAddDto.getMemberSe());
-				chatRoomDto.setTargetNo(chatRoomAddDto.getTargetNo());
-
-				ChatRoomVo chatRoomVo = chatMapper.selectChatRoomRequestForRequest(chatRoomDto);
-				//int chatRoomNo = chatService.postChatRoom(chatRoomAddDto);
-				int chatRoomNo = 0;
-				if(chatRoomVo == null) {
-					ChatRoomAddDto addDto = new ChatRoomAddDto();
-					addDto.setMemberNo(chatRoomAddDto.getRequestNo());
-					addDto.setTargetNo(chatRoomAddDto.getTargetNo());
-					addDto.setMemberSe(chatRoomAddDto.getMemberSe());
-
-					int addRoomResult = chatMapper.insertChatRoom(addDto);
-					chatRoomNo = addDto.getRoomNo();
-				} else {
-					chatRoomNo = chatRoomVo.getRoomNo();
-				}
-
-				ChatAddDto chatAddDto = new ChatAddDto();
-				if("E".equals(requestFormCancelDto.getRequestStatus())) {
-					chatAddDto.setMsgType("11");
-				} else if("F".equals(requestFormCancelDto.getRequestStatus())) {
-					chatAddDto.setMsgType("12");
-				}
-
-				chatAddDto.setFromNo(SecurityUtil.getMemberNo());
-				if("C".equals(SecurityUtil.getMemberSe()) || "B".equals(SecurityUtil.getMemberSe())) {
-					chatAddDto.setToNo(chatRoomAddDto.getRequestNo());
-				} else if("A".equals(SecurityUtil.getMemberSe())) {
-					chatAddDto.setToNo(chatRoomAddDto.getTargetNo());
-				}
-
-				Map<String,Object> msg = new HashMap<>();
-				msg.put("requestFormNo", requestFormNo);
-				msg.put("requestCancelMsg", frontTransactionMapper.selectRequestCancelWhy("E".equals(requestFormCancelDto.getRequestStatus()) ? 910 : 915 , requestFormCancelDto.getRequestCancelNo()));
-				msg.put("requestCancelEtcCn", requestFormCancelDto.getRequestCancelEtcCn());
-				chatAddDto.setMsg(new Gson().toJson(msg));
-				int chatNo = chatService.postChat(chatRoomNo, chatAddDto);
-			}*/
-
-			/*
-			2024-10-02 jjchoi
-			@최정주 @박성현
-			최종적으로 정리된 내용 공유드립니다.
-			아래로 작업 부탁드려요!
-			1.채팅 내 거래내역 빼기
-			2.채팅은 알림톡에서 아예 빼기
-			*/
-/*			ChatRoomAddDto chatRoomAddDto = new ChatRoomAddDto();
-			chatRoomAddDto = frontTransactionMapper.selectTransactionChat(requestFormNo);
-
-			if("B".equals(chatRoomAddDto.getRequestFormSe())){	// 지정 요청시에만 채팅을 보낸다.
-				chatRoomAddDto.setMemberSe("C");
-
-				int chatRoomNo = chatService.postChatRoom(chatRoomAddDto);
-
-				ChatAddDto chatAddDto = new ChatAddDto();
-				chatAddDto.setMsgType("5");
-				if(SecurityUtil.getMemberSe().equals("A")){	// 의뢰인 일때
-					chatAddDto.setFromNo(SecurityUtil.getMemberNo());
-					chatAddDto.setToNo(chatRoomAddDto.getTargetNo());	// 치자이너가 toNo
-				}else{
-					chatAddDto.setFromNo(SecurityUtil.getMemberNo());
-					chatAddDto.setToNo(chatRoomAddDto.getRequestNo());	// 의뢰인이 toNo
-				}
-
-				int chatNo = chatService.postChat(chatRoomNo, chatAddDto);
-			}*/
 		}else{
 			result =+ frontTransactionMapper.insertTransactionCancel(requestFormCancelDto);
 			result =+ frontTransactionMapper.deleteTransactionEstimate(requestFormCancelDto);
 
-			// TODO 견적서 지우고 나서 의뢰서 상태 변경필요로 보임
-			
 			alarmTalkDto = commonService.selectEstimateInfo(requestFormNo, SecurityUtil.getMemberNo());
 		}
 
 		String content = "";
-		if("A".equals(SecurityUtil.getMemberSe())){	// 의뢰인
+		if("A".equals(SecurityUtil.getMemberSe())){	// 의뢰인이 거래취소 승인 대기중을 요청하였을때
+			// F:거래취소 승인 대기중
 			if("F".equals(requestFormCancelDto.getRequestStatus())){
 				int isAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 10);
 				if (isAlarm > 0) {
-					
-					// 알림 메세지 발송 의뢰인이 거래취소 요청을 하였을 때 -> 치자이너에게 발송
+					// 의뢰인이 거래취소 요청을 하였을 때 -> 치자이너에게 발송
 					AlarmAddDto alarmAddDto = new AlarmAddDto();
 					alarmAddDto.setAlarmSj("거래 취소 요청");
-					String message = ConstUtil.DESIGNER_OPEN_MSG5.replace("{의뢰인 닉네임}", alarmTalkDto.getRequestNickName());
+					String message = ConstUtil.DESIGNER_OPEN_MSG9.replace("#{요청서}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl("/payment");
@@ -1627,7 +1548,7 @@ public class TransactionService {
 					push.setBody(message);
 					commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/payment");
 				}
-			}else{
+			}else{	// 바로 취소
 				int cnt = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 17);
 				if (cnt > 0) { // 알림이 켜져 있음.
 					if ("A".equals(alarmTalkDto.getMemberTp())) {    // 국내 의뢰인인 경우 카카오톡 전송
@@ -1660,16 +1581,16 @@ public class TransactionService {
 					String cn = "";
 					if ("A".equals(alarmTalkDto.getMemberTp())) {
 						msg = "거래 취소";
-						cn = ConstUtil.REQUEST_OPEN_MSG8;
+						cn = ConstUtil.REQUEST_OPEN_MSG19;
 					}else{
 						msg = "Txn Cancel";
-						cn = ConstUtil.REQUEST_OPEN_ENG_MSG8;
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG19;
 					}
 
 					// 알림 메세지 발송 거래취소 -> 의뢰인에게 발송
 					AlarmAddDto alarmAddDto = new AlarmAddDto();
 					alarmAddDto.setAlarmSj(msg);
-					String message1 = cn;
+					String message1 = cn.replace("#{프로젝트}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message1);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl("/payment");
@@ -1694,20 +1615,7 @@ public class TransactionService {
 				result += frontTransactionMapper.insertTransactionCancelRefundAllPay(mileageAddDto);
 			}
 
-		}else{ // 치자이너
-			int cnt = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 20);
-			if (cnt > 0) { // 알림이 켜져 있음.
-				alarmTalkDto.setTemplateCode(AlarmTalkEnum.ARCHITECT_PROJECT_CANCELLATION.getCode());
-				content = AlarmTalkEnum.ARCHITECT_PROJECT_CANCELLATION.getMessageTemplate();
-				alarmTalkDto.setReceiverNum(alarmTalkDto.getDesignerHp());
-
-				// 알림톡을 보낸다.
-				String message = content.replace("#{프로젝트}", alarmTalkDto.getRequestFormSj());
-				alarmTalkDto.setContent(message);
-				result = commonService.sendKaKaoSend(alarmTalkDto);
-			}
-
-
+		}else{ // 치자이너가 거래 취소 요청을 했을때
 			if("F".equals(requestFormCancelDto.getRequestStatus())){
 				int isAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 4);
 				
@@ -1720,16 +1628,16 @@ public class TransactionService {
 					String cn = "";
 					if("A".equals(memberTp)){
 						msg = "거래 취소";
-						cn = ConstUtil.REQUEST_OPEN_MSG9;
+						cn = ConstUtil.REQUEST_OPEN_MSG18;
 					}else{
 						msg = "Txn Cancel";
-						cn = ConstUtil.REQUEST_OPEN_ENG_MSG9;
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG18;
 					}
 
 					// 알림 메세지 발송 치자이너가 거래취소 요청을 하였을 때
 					AlarmAddDto alarmAddDto = new AlarmAddDto();
 					alarmAddDto.setAlarmSj(msg);
-					String message = cn.replace("{치자이너 닉네임}", alarmTalkDto.getDesignerNickName());
+					String message = cn.replace("#{요청서}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl("/payment");
@@ -1743,23 +1651,38 @@ public class TransactionService {
 					commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment");
 				}
 			}else{
+				int cnt = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 20);
+				if (cnt > 0) { // 알림이 켜져 있음.
+					alarmTalkDto.setTemplateCode(AlarmTalkEnum.ARCHITECT_PROJECT_CANCELLATION.getCode());
+					content = AlarmTalkEnum.ARCHITECT_PROJECT_CANCELLATION.getMessageTemplate();
+					alarmTalkDto.setReceiverNum(alarmTalkDto.getDesignerHp());
+
+					// 알림톡을 보낸다.
+					String message = content.replace("#{프로젝트}", alarmTalkDto.getRequestFormSj());
+					alarmTalkDto.setContent(message);
+					result = commonService.sendKaKaoSend(alarmTalkDto);
+				}
+
 				int isAlarm = commonService.selectAlarm(SecurityUtil.getMemberNo(), 10);
 				if (isAlarm > 0) {
 
 					// 2025-03-05 cjj 로그인한 사람이 국내/해외 의뢰인인지 확인.
 					// 회원유형 (A:한국인, B:외국인)
 					String memberTp = commonService.selectMemberTp(SecurityUtil.getMemberNo());
-					String sj = "";
+					String msg = "";
+					String cn = "";
 					if("A".equals(memberTp)){
-						sj = "거래 취소";
+						msg = "거래 취소";
+						cn = ConstUtil.REQUEST_OPEN_MSG19;
 					}else{
-						sj = "Txn cancel";
+						msg = "Txn Cancel";
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG19;
 					}
 					
 					// 알림 메세지 발송 거래취소 -> 치자이너에게 발송
 					AlarmAddDto alarmAddDto = new AlarmAddDto();
-					alarmAddDto.setAlarmSj(sj);
-					String message1 = ConstUtil.DESIGNER_OPEN_MSG6;
+					alarmAddDto.setAlarmSj(msg);
+					String message1 = cn.replace("#{프로젝트}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message1);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl("/payment");
@@ -1799,6 +1722,9 @@ public class TransactionService {
 		int result = 0;
 		result = frontTransactionMapper.updateRequestStatus(requestFormNo, "E", SecurityUtil.getMemberNo());
 
+		AlarmTalkDto alarmTalkDto = new AlarmTalkDto();
+		alarmTalkDto = commonService.selectRequestInfo(requestFormNo);
+
 		if(result > 0){
 
 			if("A".equals(SecurityUtil.getMemberSe())){	// 의뢰인
@@ -1810,6 +1736,24 @@ public class TransactionService {
 				mileageAddDto.setAddPaySe("N");
 
 				result += frontTransactionMapper.insertTransactionCancelRefundAllPay(mileageAddDto);
+
+				int isAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 17);
+				if (isAlarm > 0) {
+					AlarmAddDto alarmAddDto = new AlarmAddDto();
+					alarmAddDto.setAlarmSj("거래 취소");
+					String message1 = ConstUtil.DESIGNER_OPEN_MSG10.replace("#{프로젝트}", alarmTalkDto.getRequestFormSj());
+					alarmAddDto.setAlarmCn(message1);
+					alarmAddDto.setAlarmSe("D");
+					alarmAddDto.setAlarmUrl("/payment");
+					alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
+					commonService.postAlarm(alarmAddDto);
+
+					// FCM
+					PushDto push = new PushDto();
+					push.setBody(message1);
+
+					commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/payment");
+				}
 			} else {
 				MileageAddDto mileageAddDto = new MileageAddDto();
 				mileageAddDto.setRequestFormNo(requestFormNo);
@@ -1818,55 +1762,38 @@ public class TransactionService {
 				mileageAddDto.setAddPaySe("N");
 				
 				result += frontTransactionMapper.insertTransactionCancelRefundPay(mileageAddDto);
+
+				int isAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 4);
+				if (isAlarm > 0) {
+					String msg = "";
+					String cn = "";
+					if ("A".equals(alarmTalkDto.getMemberTp())) {
+						msg = "거래 취소";
+						cn = ConstUtil.REQUEST_OPEN_MSG19;
+					}else{
+						msg = "Txn Cancel";
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG19;
+					}
+
+					// 알림 메세지 발송 거래취소 -> 의뢰인에게 발송
+					AlarmAddDto alarmAddDto = new AlarmAddDto();
+					alarmAddDto.setAlarmSj(msg);
+					String message1 = cn.replace("#{프로젝트}", alarmTalkDto.getRequestFormSj());
+					alarmAddDto.setAlarmCn(message1);
+					alarmAddDto.setAlarmSe("D");
+					alarmAddDto.setAlarmUrl("/payment");
+					alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getRegisterNo()));
+					commonService.postAlarm(alarmAddDto);
+
+					// FCM
+					PushDto push = new PushDto();
+					push.setBody(message1);
+
+					commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment");
+				}
 			}
 			
-			/*
-			2024-10-02 jjchoi
-			@최정주 @박성현
-			최종적으로 정리된 내용 공유드립니다.
-			아래로 작업 부탁드려요!
-			1.채팅 내 거래내역 빼기
-			2.채팅은 알림톡에서 아예 빼기
-			*/
-			/*ChatRoomAddDto chatRoomAddDto = new ChatRoomAddDto();
-			chatRoomAddDto = frontTransactionMapper.selectTransactionChat(requestFormNo);
 
-			//채팅처리 예제
-			chatRoomAddDto.setMemberSe("C");
-
-			ChatRoomDto chatRoomDto = new ChatRoomDto();
-			chatRoomDto.setMemberNo(chatRoomAddDto.getRequestNo());
-			chatRoomDto.setTargetSe(chatRoomAddDto.getMemberSe());
-			chatRoomDto.setTargetNo(chatRoomAddDto.getTargetNo());
-
-			ChatRoomVo chatRoomVo = chatMapper.selectChatRoomRequestForRequest(chatRoomDto);
-			//int chatRoomNo = chatService.postChatRoom(chatRoomAddDto);
-			int chatRoomNo = 0;
-			if(chatRoomVo == null) {
-				ChatRoomAddDto addDto = new ChatRoomAddDto();
-				addDto.setMemberNo(chatRoomAddDto.getRequestNo());
-				addDto.setTargetNo(chatRoomAddDto.getTargetNo());
-				addDto.setMemberSe(chatRoomAddDto.getMemberSe());
-
-				int addRoomResult = chatMapper.insertChatRoom(addDto);
-				chatRoomNo = addDto.getRoomNo();
-			} else {
-				chatRoomNo = chatRoomVo.getRoomNo();
-			}
-
-			ChatAddDto chatAddDto = new ChatAddDto();
-			chatAddDto.setMsgType("13");
-
-			chatAddDto.setFromNo(SecurityUtil.getMemberNo());
-			if("C".equals(SecurityUtil.getMemberSe()) || "B".equals(SecurityUtil.getMemberSe())) {
-				chatAddDto.setToNo(chatRoomAddDto.getRequestNo());
-			} else if("A".equals(SecurityUtil.getMemberSe())) {
-				chatAddDto.setToNo(chatRoomAddDto.getTargetNo());
-			}
-			Map<String,Object> msg = new HashMap<>();
-			msg.put("requestFormNo", requestFormNo);
-			chatAddDto.setMsg(new Gson().toJson(msg));
-			int chatNo = chatService.postChat(chatRoomNo, chatAddDto);*/
 		}
 		return result;
 	}
@@ -1996,7 +1923,7 @@ public class TransactionService {
 		String content = "";
 		String message = "";
 		if("A".equals(type)){	// 의뢰인이 누를 때
-			int cnt = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 20);
+			int cnt = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 20);
 			if (cnt > 0) { // 알림이 켜져 있음.
 				alarmTalkDto.setTemplateCode(AlarmTalkEnum.VIEW_3D_DESIGNER.getCode());
 				alarmTalkDto.setReceiverNum(alarmTalkDto.getRequestHp());
@@ -2006,6 +1933,26 @@ public class TransactionService {
 						.replace("#{project_name}", alarmTalkDto.getRequestFormSj());
 				alarmTalkDto.setContent(message);
 				result = commonService.sendKaKaoSend(alarmTalkDto);
+			}
+
+			int cnt1 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 10);
+			if (cnt1 > 0) {
+				String sj = "3D 뷰어 댓글 등록";
+				String cn = ConstUtil.DESIGNER_TARGET_MSG8;
+				// 알림 메세지 발송
+				AlarmAddDto alarmAddDto = new AlarmAddDto();
+				alarmAddDto.setAlarmSj(sj);
+				String message1 = cn.replace("#{의뢰인}", alarmTalkDto.getRequestNickName())
+						.replace("#{project_name}", alarmTalkDto.getRequestFormSj());
+				alarmAddDto.setAlarmCn(message1);
+				alarmAddDto.setAlarmSe("D");
+				alarmAddDto.setAlarmUrl("/payment/comms/"+alarmTalkDto.getRequestFormNo()+"/cad");
+				alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
+				commonService.postAlarm(alarmAddDto);
+
+				PushDto push = new PushDto();
+				push.setBody(message1);
+				commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment/comms/"+alarmTalkDto.getRequestFormNo()+"/cad");
 			}
 		}else{	// 치자이너가 누를 때
 			int cnt = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 17);
@@ -2031,6 +1978,37 @@ public class TransactionService {
 					mailService.mailSend(mailDto);
 					result = 1;
 				}
+			}
+
+			// 앱알림 or push 알림
+			int cnt1 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 4);
+			if (cnt1 > 0) {
+				// 회원유형 (A:한국인, B:외국인)
+				String memberTp = commonService.selectMemberTp(Integer.parseInt(alarmTalkDto.getRegisterNo()));
+				String sj = "";
+				String cn = "";
+				if("A".equals(memberTp)){
+					sj = "3D 뷰어 댓글 등록";
+					cn = ConstUtil.REQUEST_OPEN_MSG11;
+				}else{
+					sj = "New 3D Viewer comment";
+					cn = ConstUtil.REQUEST_OPEN_ENG_MSG11;
+				}
+				// 알림 메세지 발송
+				AlarmAddDto alarmAddDto = new AlarmAddDto();
+				alarmAddDto.setAlarmSj(sj);
+				String message1 = cn.replace("#{의뢰인}", alarmTalkDto.getRequestNickName())
+						.replace("#{project_name}", alarmTalkDto.getRequestFormSj())
+								.replace("#{치자이너}", alarmTalkDto.getDesignerNickName());
+				alarmAddDto.setAlarmCn(message1);
+				alarmAddDto.setAlarmSe("D");
+				alarmAddDto.setAlarmUrl("/payment/comms/"+alarmTalkDto.getRequestFormNo()+"/cad");
+				alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getRegisterNo()));
+				commonService.postAlarm(alarmAddDto);
+
+				PushDto push = new PushDto();
+				push.setBody(message1);
+				commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment/comms/"+alarmTalkDto.getRequestFormNo()+"/cad");
 			}
 		}
 
