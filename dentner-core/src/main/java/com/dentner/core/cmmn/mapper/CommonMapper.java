@@ -49,16 +49,17 @@ public interface CommonMapper {
 
     List<String> selectMemberFCMToken(@Param("memberNo") int memberNo);
 
-    // 추가: 모든 회원의 FCM 토큰을 조회하는 메서드
-    List<String> selectMemberAllFCMToken();
+	int selectAlarm(@Param("memberNo")  int memberNo, @Param("alarmCodeNo") int alarmCodeNo);
 
-    int selectAlarm(@Param("memberNo")  int memberNo, @Param("alarmCodeNo") int alarmCodeNo);
+	int selectAlarmCheckList(@Param("memberNo") int memberNo, @Param("alarmCodeList") List<String> alarmCodeList);
 
-    int selectAlarmCheckList(@Param("memberNo") int memberNo, @Param("alarmCodeList") List<String> alarmCodeList);
+	String selectMileageAmount(@Param("mileageNo") int mileageNo);
 
-    String selectMileageAmount(@Param("mileageNo") int mileageNo);
-
-    String selectMileage(@Param("mileageNo") int mileageNo);
+	String selectMileage(@Param("mileageNo") int mileageNo);
 
     String selectMemberTp(@Param("memberNo") int memberNo);
+
+    List<String> selectMemberAllFCMToken();
+
+    String selectMileageAmountMile(Integer mileageNo);
 }

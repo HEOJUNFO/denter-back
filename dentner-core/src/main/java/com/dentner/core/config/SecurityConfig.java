@@ -48,7 +48,7 @@ public class SecurityConfig {
                     config.setAllowedOriginPatterns(List.of("http://localhost:4000", "http://localhost:4140", "http://localhost:8080", "http://localhost:3000",
                             "http://192.168.219.42:4000", "http://192.168.219.42:3000", "http://192.168.0.3:4000", "http://115.144.235.93:3000","http://localhost:3001", "http://192.168.219.47:4000",
                             "http://ec2-43-201-195-139.ap-northeast-2.compute.amazonaws.com:4000", "https://192.168.219.42:4000", "https://192.168.219.42:3000",
-                            "http://ec2-43-201-195-139.ap-northeast-2.compute.amazonaws.com:3000", "https://169.254.234.110:4000",
+                            "http://ec2-43-201-195-139.ap-northeast-2.compute.amazonaws.com:3000", "https://169.254.157.55:4000",
                             "http://dentner.com", "https://dentner.com","http://10.0.10.41:443", "http://10.0.10.41:80",
                             "http://43.201.195.139:4000", "http://dentner.site", "https://dentner.site", "http://219.254.29.20:4000", "http://192.168.29.22:4000"));
                     config.setAllowedMethods(Collections.singletonList("*"));

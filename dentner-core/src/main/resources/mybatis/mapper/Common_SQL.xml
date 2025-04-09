@@ -206,7 +206,15 @@
     <select id="selectMemberFCMToken" resultType="String">
     	SELECT DEVICE_TOKEN FROM T_DEVICE WHERE MEMBER_NO = #{memberNo} ORDER BY REGISTER_DT DESC
     </select>
-    
+
+    <select id="selectMemberAllFCMToken" resultType="String">
+        SELECT DEVICE_TOKEN FROM T_DEVICE WHERE MEMBER_NO IN (
+            SELECT MEMBER_NO
+            FROM T_ALARM_SETTING tas
+            WHERE ALARM_CODE_NO IN(SELECT ALARM_CODE_NO FROM T_ALARM_CODE_NEW tacn WHERE ALARM_CODE_NO IN (7, 13))
+        );
+    </select>
+
     <select id="selectAlarm" resultType="int">
     	SELECT COUNT(*) FROM T_ALARM_SETTING WHERE MEMBER_NO = #{memberNo} AND ALARM_CODE_NO = #{alarmCodeNo}
     </select>
@@ -258,7 +266,7 @@
 
     <select id="selectEstimateInfo" resultType="com.dentner.core.cmmn.dto.AlarmTalkDto">
         SELECT
-            A.REQUEST_FORM_SJ, B.MEMBER_HP AS REQUEST_HP, B.MEMBER_EMAIL AS REQUEST_EMAIL,
+            A.REQUEST_FORM_SJ, B.MEMBER_HP AS REQUEST_HP, B.MEMBER_EMAIL AS REQUEST_EMAIL, B.MEMBER_TP,
             (SELECT MEMBER_HP FROM T_MEMBER WHERE MEMBER_NO = #{registerNo} AND DELETED_AT = 'N') AS DESIGNER_HP,
             (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = B.MEMBER_NO AND MEMBER_SE = 'A') AS REQUEST_NICK_NAME,
             (SELECT MEMBER_NICK_NAME FROM T_MEMBER_PROFILE WHERE MEMBER_NO = #{registerNo} AND MEMBER_SE = 'C') AS DESIGNER_NICK_NAME,
@@ -293,12 +301,24 @@
     <select id="selectMemberTp" resultType="String">
         SELECT MEMBER_TP FROM T_MEMBER WHERE MEMBER_NO = #{memberNo}
     </select>
-    
-    <!-- 추가된 부분: 모든 회원의 FCM 토큰 조회 -->
-    <select id="selectMemberAllFCMToken" resultType="String">
-        SELECT DEVICE_TOKEN 
-        FROM T_DEVICE 
-        WHERE (DELETED_AT = 'N' OR DELETED_AT IS NULL)
-        ORDER BY REGISTER_DT DESC
+
+    <select id="selectMileageAmountMile" resultType="String">
+        SELECT
+            CASE MILEAGE_UNIT
+                WHEN 'A' THEN
+                    CONCAT(
+                            FORMAT(ABS(CASE MILEAGE_SE WHEN 'B' THEN MILEAGE_AMOUNT / 2 ELSE MILEAGE_AMOUNT END), 1),
+                            'P(￦)'
+                    )
+                ELSE
+                    CONCAT(
+                            FORMAT(ABS(CASE MILEAGE_SE WHEN 'B' THEN MILEAGE_AMOUNT / 2 ELSE MILEAGE_AMOUNT END), 1),
+                            'P($)'
+                    )
+                END AS AMOUNT
+        FROM
+            T_MILEAGE
+        WHERE
+            MILEAGE_NO = #{mileageNo}
     </select>
 </mapper>

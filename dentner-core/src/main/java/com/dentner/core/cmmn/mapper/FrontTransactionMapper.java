@@ -157,7 +157,7 @@ public interface FrontTransactionMapper {
 
     int insertTransactionCancelRefundAllPay(MileageAddDto mileageAddDto);
 
-    int selectTransactionEstimateReceive(@Param("requestFormNo") Integer requestFormNo);
+    int selectTransactionEstimateReceive(@Param("requestFormNo") Integer requestFormNo, @Param("memberNo") Integer memberNo);
 
     int selectTransactionReceive(@Param("requestFormNo") Integer requestFormNo);
 }
