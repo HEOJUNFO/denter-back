@@ -3,7 +3,10 @@ package com.dentner.admin.api.mileage;
 
 import java.util.List;
 
+import com.dentner.core.cmmn.dto.AlarmTalkDto;
 import com.dentner.core.cmmn.vo.*;
+import com.dentner.core.util.AlarmTalkEnum;
+import com.dentner.core.util.ConstUtil;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -140,6 +143,36 @@ public class AdminMileageService {
 				}
 			}
 			adminMileageMapper.updateCalculateGroupConfirm(calculateGroupNo, SecurityUtil.getMemberNo());
+		}
+
+		int isAlarm = commonService.selectAlarm(SecurityUtil.getMemberNo(), 11);
+		if (isAlarm > 0) {
+
+			// 알림톡을 보낸다.
+			AlarmTalkDto alarmTalkDto = new AlarmTalkDto();
+			alarmTalkDto = commonService.selectMileageInfo(SecurityUtil.getMemberNo());
+			alarmTalkDto.setTemplateCode(AlarmTalkEnum.ARCHITECT_PAYMENT_PROCESSING_INITIATED.getCode());
+			alarmTalkDto.setReceiverNum(alarmTalkDto.getDesignerHp());
+			String content = AlarmTalkEnum.ARCHITECT_PAYMENT_PROCESSING_INITIATED.getMessageTemplate();
+			String message = content.replace("#{치과기공소or치자이너}", alarmTalkDto.getDesignerNickName());
+			alarmTalkDto.setContent(message);
+			result = commonService.sendKaKaoSend(alarmTalkDto);
+
+			// FCM
+			PushDto push = new PushDto();
+			String cn = ConstUtil.DESIGNER_OPEN_MSG8;
+			String message1 = cn.replace("#{치과기공소or치자이너}", alarmTalkDto.getDesignerNickName());
+			push.setBody(message1);
+			commonService.postFCMPush(SecurityUtil.getMemberNo(), push, "/mileageOffice");
+
+			// 알림
+			AlarmAddDto alarmAddDto = new AlarmAddDto();
+			alarmAddDto.setAlarmSj("마일리지 정산 완료");
+			alarmAddDto.setAlarmCn(message1);
+			alarmAddDto.setAlarmSe("F");
+			alarmAddDto.setAlarmUrl("");
+			alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
+			commonService.postAlarm(alarmAddDto);
 		}
 
 		return result;

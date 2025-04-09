@@ -188,11 +188,44 @@ public class CommonService {
 		}
 	}
 
+	public int postAllFCMPush(PushDto pushDto, String goUrl) {
+		try {
+			List<String> token = commonMapper.selectMemberAllFCMToken();
+			if(token != null && token.size() > 0){
+				for (int i = 0; i < token.size(); i++) {
+					Message message = Message.builder()
+							.putData("title", "Dentner")
+							.putData("body", pushDto.getBody())
+							.putData("url", goUrl)
+							.setToken(token.get(i))
+							.build();
+
+					String response = FirebaseMessaging.getInstance().send(message);
+					System.out.println("Successfully sent message: " + response);
+
+				}
+			}
+			return 1;
+
+		} catch (Exception e) {
+			e.printStackTrace();
+			return 0;
+		}
+	}
+
 	public String selectMemberTp(int memberNo) {
 		return commonMapper.selectMemberTp(memberNo);
 	}
 
 	public String getMemberNickName(String memberNo) {
 		return commonMapper.selectMemberNickName(memberNo);
+	}
+
+	public AlarmTalkDto selectRequestInfo(Integer requestFormNo) {
+		return commonMapper.selectRequestInfo(requestFormNo);
+	}
+
+	public AlarmTalkDto selectMileageInfo(int memberNo) {
+		return commonMapper.selectMileageInfo(memberNo);
 	}
 }

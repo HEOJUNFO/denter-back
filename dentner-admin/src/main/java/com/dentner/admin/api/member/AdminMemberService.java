@@ -170,11 +170,11 @@ public class AdminMemberService {
 							}
 						}
 
-						// 앱알림 or push 알림
-						int cnt1 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 1);
-						if (cnt1 > 0) {
-
-						}
+//						// 앱알림 or push 알림
+//						int cnt1 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 1);
+//						if (cnt1 > 0) {
+//
+//						}
 					}else{ // 치자이너, 치기공 일때
 						int cnt1 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getMemberNo()), 18);
 						if (cnt1 > 0) {
@@ -184,10 +184,10 @@ public class AdminMemberService {
 						}
 
 						// 앱알림 or push 알림 추후에 앱 보내려면 내용 추가하면 됨.
-						int cnt2 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 1);
-						if (cnt2 > 0) {
-
-						}
+//						int cnt2 = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 1);
+//						if (cnt2 > 0) {
+//
+//						}
 					}
 
 					//adminMemberMapper.deleteRealMember(memberArr[i]);

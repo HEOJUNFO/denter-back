@@ -5,6 +5,7 @@ import com.dentner.admin.api.common.CommonService;
 import com.dentner.core.cmmn.dto.AlarmAddDto;
 import com.dentner.core.cmmn.dto.BbsAddDto;
 import com.dentner.core.cmmn.dto.BbsDto;
+import com.dentner.core.cmmn.dto.PushDto;
 import com.dentner.core.cmmn.mapper.AdminBbsMapper;
 import com.dentner.core.cmmn.vo.BbsListVo;
 import com.dentner.core.cmmn.vo.BbsVo;
@@ -58,6 +59,10 @@ public class AdminBbsService {
 			alarmAddDto.setAlarmSe("C");
 			alarmAddDto.setAlarmUrl(bbsAddDto.getBbsNo().toString());
 			commonService.postAllAlarm(alarmAddDto);
+
+			PushDto push = new PushDto();
+			push.setBody(bbsAddDto.getBbsSj());
+			commonService.postAllFCMPush(push, "/help/notice");
 		}
 		// 알림 메세지 발송
 		return result;
