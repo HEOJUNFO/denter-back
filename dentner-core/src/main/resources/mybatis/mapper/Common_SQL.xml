@@ -293,4 +293,12 @@
     <select id="selectMemberTp" resultType="String">
         SELECT MEMBER_TP FROM T_MEMBER WHERE MEMBER_NO = #{memberNo}
     </select>
+    
+    <!-- 추가된 부분: 모든 회원의 FCM 토큰 조회 -->
+    <select id="selectMemberAllFCMToken" resultType="String">
+        SELECT DEVICE_TOKEN 
+        FROM T_DEVICE 
+        WHERE (DELETED_AT = 'N' OR DELETED_AT IS NULL)
+        ORDER BY REGISTER_DT DESC
+    </select>
 </mapper>

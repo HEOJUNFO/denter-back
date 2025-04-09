@@ -19,6 +19,7 @@ public class ConstUtil {
     public static String DESIGNER_OPEN_MSG4 = "거래가 완료되었어요!";
     public static String DESIGNER_OPEN_MSG5 = "{의뢰인 닉네임}님이 거래취소 요청을 검토중이에요 ...";
     public static String DESIGNER_OPEN_MSG6 = "거래가 취소되었어요.";
+    public static String DESIGNER_OPEN_MSG8 = "#{치과기공소or치자이너}님의 마일리지 정산이 완료되었습니다.";
 
     public static String REQUEST_TARGET_MSG1 = "{치자이너 닉네임}님의 수락을 기다리고 있습니다.";
     public static String REQUEST_TARGET_MSG2 = "요청이 거절되어 거래가 취소되었어요. 취소된 요청서에 대한 의뢰서는 의뢰서 바구니에 다시 저장돼요.";
@@ -59,6 +60,7 @@ public class ConstUtil {
     public static String DESIGNER_OPEN_ENG_MSG4 = "거래가 완료되었어요!";
     public static String DESIGNER_OPEN_ENG_MSG5 = "{의뢰인 닉네임}님이 거래취소 요청을 검토중이에요 ...";
     public static String DESIGNER_OPEN_ENG_MSG6 = "거래가 취소되었어요.";
+    public static String DESIGNER_OPEN_ENG_MSG8 = "#{치과기공소or치자이너} mileage settlement has been completed.";
 
     public static String REQUEST_TARGET_ENG_MSG1 = "Waiting for {치자이너 닉네임} to accept.";
     public static String REQUEST_TARGET_ENG_MSG2 = "Req declined, txn cancelled. Referrals for cancelled req will return to your cart.";
