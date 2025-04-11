@@ -270,4 +270,20 @@ public class EmailUtil {
         }
         return contentBuilder.toString();
     }
+
+    public static String readRequestCancelHTMLTemplate(AlarmTalkDto alarmTalkDto) {
+        StringBuilder contentBuilder = new StringBuilder();
+        try (InputStream inputStream = getResourceAsStream("request_cancel.html");
+             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.replace("#{요청서명}", alarmTalkDto.getRequestFormSj());
+                line = line.replace("#{의뢰인}", alarmTalkDto.getRequestNickName());
+                contentBuilder.append(line).append("\n");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return contentBuilder.toString();
+    }
 }

@@ -348,7 +348,7 @@ public class TransactionController implements V1ApiVersion {
     @ResponseMessage("거래취소 승인 성공")
     @Operation(summary = "거래취소 승인 성공", description = "거래취소를 승인한다.")
     @Parameter(name = "requestFormNo", description = "요청서 번호", example = "",  schema = @Schema(type = "integer", format = "int32"))
-    public int updateTransactionCancelConfirm(@PathVariable("requestFormNo") Integer requestFormNo){
+    public int updateTransactionCancelConfirm(@PathVariable("requestFormNo") Integer requestFormNo) throws Exception{
         return transactionService.updateTransactionCancelConfirm(requestFormNo);
     }
 

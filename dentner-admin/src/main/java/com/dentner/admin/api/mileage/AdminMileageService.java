@@ -145,8 +145,8 @@ public class AdminMileageService {
 			adminMileageMapper.updateCalculateGroupConfirm(calculateGroupNo, SecurityUtil.getMemberNo());
 		}
 
-		int isAlarm = commonService.selectAlarm(SecurityUtil.getMemberNo(), 11);
-		if (isAlarm > 0) {
+		// int isAlarm = commonService.selectAlarm(SecurityUtil.getMemberNo(), 11);
+	
 
 			// 알림톡을 보낸다.
 			AlarmTalkDto alarmTalkDto = new AlarmTalkDto();
@@ -173,7 +173,7 @@ public class AdminMileageService {
 			alarmAddDto.setAlarmUrl("");
 			alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
 			commonService.postAlarm(alarmAddDto);
-		}
+		
 
 		return result;
 	}
