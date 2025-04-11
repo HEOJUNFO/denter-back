@@ -581,7 +581,8 @@ public class TransactionService {
 						cn = ConstUtil.REQUEST_OPEN_ENG_MSG14;
 					}
 
-					String message = cn.replace("{치자이너 닉네임}", alarmTalkDto.getDesignerNickName());
+					String message = cn.replace("#{치자이너}", alarmTalkDto.getDesignerNickName())
+							.replace("#{요청서명}", alarmTalkDto.getRequestFormSj());
 					alarmAddDto.setAlarmCn(message);
 					alarmAddDto.setAlarmSe("D");
 					alarmAddDto.setAlarmUrl(url);
@@ -1454,6 +1455,19 @@ public class TransactionService {
 		if("A".equals(SecurityUtil.getMemberSe())){	// 의뢰인이 거래취소 승인 대기중을 요청하였을때
 			// F:거래취소 승인 대기중
 			if("F".equals(requestFormCancelDto.getRequestStatus())){
+				 // 카카오톡/이메일 알림 설정 확인 (17번 알림 타입)
+				 int isKakaoEmailAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 17);
+				 if (isKakaoEmailAlarm > 0) {
+						 alarmTalkDto.setTemplateCode(AlarmTalkEnum.CANCEL_REQUEST.getCode());
+						 content = AlarmTalkEnum.CANCEL_REQUEST.getMessageTemplate();
+						 alarmTalkDto.setReceiverNum(alarmTalkDto.getDesignerHp());
+						 
+						 // 알림톡 내용 설정
+						 String message = content.replace("#{의뢰인}", alarmTalkDto.getRequestNickName())
+								 .replace("#{project_name}", alarmTalkDto.getRequestFormSj());
+						 alarmTalkDto.setContent(message);
+						 result = commonService.sendKaKaoSend(alarmTalkDto);	
+				 }
 				int isAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 10);
 				if (isAlarm > 0) {
 					// 의뢰인이 거래취소 요청을 하였을 때 -> 치자이너에게 발송
@@ -1541,6 +1555,32 @@ public class TransactionService {
 		}else{ // 치자이너가 거래 취소 요청을 했을때
 			if("F".equals(requestFormCancelDto.getRequestStatus())){
 				int isAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 4);
+
+				int isKakaoEmailAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getRegisterNo()), 17);
+				if (isKakaoEmailAlarm > 0) {
+					// 의뢰인이 국내인지 해외인지 확인
+					String memberTp = commonService.selectMemberTp(Integer.parseInt(alarmTalkDto.getRegisterNo()));
+					
+					if ("A".equals(memberTp)) { // 국내 의뢰인인 경우 카카오톡 전송
+						alarmTalkDto.setTemplateCode(AlarmTalkEnum.CANCEL_REQUEST.getCode());
+						content = AlarmTalkEnum.CANCEL_REQUEST.getMessageTemplate();
+						alarmTalkDto.setReceiverNum(alarmTalkDto.getRequestHp());
+						
+						// 알림톡 내용 설정
+						String message = content.replace("#{project_name}", alarmTalkDto.getRequestFormSj());
+						alarmTalkDto.setContent(message);
+						result = commonService.sendKaKaoSend(alarmTalkDto);
+					} else { // 해외 의뢰인인 경우 이메일 전송
+						// 이메일 발송
+						MailDto mailDto = new MailDto();
+						String emailTemplate = EmailUtil.readCancelHTMLTemplate(alarmTalkDto);
+						
+						mailDto.setMailTo(alarmTalkDto.getRequestEmail());
+						mailDto.setMailSubject("[Dentner] Transaction Cancellation Request");
+						mailDto.setMailContent(emailTemplate);
+						mailService.mailSend(mailDto);
+					}
+				}
 				
 				if (isAlarm > 0) {
 
@@ -1648,6 +1688,23 @@ public class TransactionService {
 		AlarmTalkDto alarmTalkDto = new AlarmTalkDto();
 		alarmTalkDto = commonService.selectRequestInfo(requestFormNo);
 
+		if("A".equals(SecurityUtil.getMemberSe())){	
+			AlarmAddDto alarmAddDto = new AlarmAddDto();
+			alarmAddDto.setAlarmSj("거래 취소");
+			String message1 = ConstUtil.DESIGNER_OPEN_MSG10.replace("#{프로젝트}", alarmTalkDto.getRequestFormSj());
+			alarmAddDto.setAlarmCn(message1);
+			alarmAddDto.setAlarmSe("D");
+			alarmAddDto.setAlarmUrl("/payment");
+			alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
+			commonService.postAlarm(alarmAddDto);
+
+			// FCM
+			PushDto push = new PushDto();
+			push.setBody(message1);
+
+			commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, "/payment");
+		}
+
 		if(result > 0){
 
 			if("A".equals(SecurityUtil.getMemberSe())){	// 의뢰인
@@ -1715,8 +1772,6 @@ public class TransactionService {
 					commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment");
 				}
 			}
-			
-
 		}
 		return result;
 	}
