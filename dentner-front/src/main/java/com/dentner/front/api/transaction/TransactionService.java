@@ -418,7 +418,7 @@ public class TransactionService {
 					}else{
 						// 이메일 발송
 						MailDto mailDto = new MailDto();
-						String emailTemplate = EmailUtil.readCadUploadHTMLTemplate(alarmTalkDto);
+						String emailTemplate = EmailUtil.readCadUploadSurchargeHTMLTemplate(alarmTalkDto);
 
 						// template 변경
 						mailDto.setMailTo(alarmTalkDto.getRequestEmail());
@@ -463,7 +463,7 @@ public class TransactionService {
 					}else{
 						// 이메일 발송
 						MailDto mailDto = new MailDto();
-						String emailTemplate = EmailUtil.readCadUploadHTMLTemplate(alarmTalkDto);
+						String emailTemplate = EmailUtil.readCadRemakeSurchargeHTMLTemplate(alarmTalkDto);
 
 						// template 변경
 						mailDto.setMailTo(alarmTalkDto.getRequestEmail());
@@ -529,9 +529,9 @@ public class TransactionService {
 					// 알림보내기.
 					String cn = "";
 					if("A".equals(memberTp)){
-						cn = ConstUtil.REQUEST_OPEN_MSG14;
+						cn = ConstUtil.REQUEST_OPEN_MSG21;
 					}else{
-						cn = ConstUtil.REQUEST_OPEN_ENG_MSG14;
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG21;
 					}
 
 					// 알림보내기.
@@ -563,7 +563,7 @@ public class TransactionService {
 					}else{
 						// 이메일 발송
 						MailDto mailDto = new MailDto();
-						String emailTemplate = EmailUtil.readCadUploadHTMLTemplate(alarmTalkDto);
+						String emailTemplate = EmailUtil.readCadRemakeHTMLTemplate(alarmTalkDto);
 
 						// template 변경
 						mailDto.setMailTo(alarmTalkDto.getRequestEmail());
@@ -576,9 +576,9 @@ public class TransactionService {
 				if (cnt1 > 0) { // 앱 알림이 켜져 있음.
 					String cn = "";
 					if("A".equals(memberTp)){
-						cn = ConstUtil.REQUEST_OPEN_MSG5;
+						cn = ConstUtil.REQUEST_OPEN_MSG14;
 					}else{
-						cn = ConstUtil.REQUEST_OPEN_ENG_MSG5;
+						cn = ConstUtil.REQUEST_OPEN_ENG_MSG14;
 					}
 
 					String message = cn.replace("{치자이너 닉네임}", alarmTalkDto.getDesignerNickName());
@@ -820,7 +820,7 @@ public class TransactionService {
 		return resultMap;
 	}
 
-	public int putTransactionContract(Integer requestFormNo, RequestFormContractDto requestFormContractDto) {
+	public int putTransactionContract(Integer requestFormNo, RequestFormContractDto requestFormContractDto) throws Exception {
 		requestFormContractDto.setRequestFormNo(requestFormNo);
 		requestFormContractDto.setRegisterNo(SecurityUtil.getMemberNo());
 
@@ -835,31 +835,46 @@ public class TransactionService {
 		}
 
 		// 수락 시
-		if("A".equals(requestFormContractDto.getRequestContactSe())){
+		if("A".equals(requestFormContractDto.getRequestContactSe())) {
 			result += frontTransactionMapper.updateRequestDealStatus(requestFormNo, "C", SecurityUtil.getMemberNo());
-
-			// 수락시 알림톡 전송
-			alarmTalkDto.setTemplateCode(AlarmTalkEnum.PROJECT_COMPLETION_DOCUMENT_SUBMISSION.getCode());
-			alarmTalkDto.setReceiverNum(alarmTalkDto.getRequestHp());
-			String content = AlarmTalkEnum.PROJECT_COMPLETION_DOCUMENT_SUBMISSION.getMessageTemplate();
-			String message = content.replace("#{project_name}", alarmTalkDto.getRequestFormSj())
-					.replace("#{치자이너}", commonService.getMemberNickName(String.valueOf(SecurityUtil.getMemberNo())));
 			
-			alarmTalkDto.setContent(message);
-			commonService.sendKaKaoSend(alarmTalkDto);
-
+			// Get recipient's member type (A: Korean, B: Foreign)
+			String recipientMemberTp = commonService.selectMemberTp(Integer.parseInt(alarmTalkDto.getRegisterNo()));
+			
+			// Only send KakaoTalk notification if the recipient is domestic (Korean)
+			if("A".equals(recipientMemberTp)) {
+				// Send KakaoTalk notification for domestic clients
+				alarmTalkDto.setTemplateCode(AlarmTalkEnum.PROJECT_COMPLETION_DOCUMENT_SUBMISSION.getCode());
+				alarmTalkDto.setReceiverNum(alarmTalkDto.getRequestHp());
+				String content = AlarmTalkEnum.PROJECT_COMPLETION_DOCUMENT_SUBMISSION.getMessageTemplate();
+				String message = content.replace("#{project_name}", alarmTalkDto.getRequestFormSj())
+						.replace("#{치자이너}", commonService.getMemberNickName(String.valueOf(SecurityUtil.getMemberNo())));
+				
+				alarmTalkDto.setContent(message);
+				commonService.sendKaKaoSend(alarmTalkDto);
+			} else {
+				MailDto mailDto = new MailDto();
+				String emailTemplate = EmailUtil.readReceiveHTMLTemplate(alarmTalkDto);
+				
+				mailDto.setMailTo(alarmTalkDto.getRequestEmail());
+				mailDto.setMailSubject("[Dentner]Receive referral");
+				mailDto.setMailContent(emailTemplate);
+				mailService.mailSend(mailDto);
+			}
+			
+			// Push notification logic remains the same for both domestic and international
 			String url = ConstUtil.DESIGNER_ALARM1_URL.replace("{REQUEST_FORM_NO}", requestFormNo.toString());
-
-			// 회원유형 (A:한국인, B:외국인)
+			
+			// Get sender's member type (A: Korean, B: Foreign)
 			String memberTp = commonService.selectMemberTp(SecurityUtil.getMemberNo());
 			String msg = "";
-			if("A".equals(memberTp)){
+			if("A".equals(memberTp)) {
 				msg = "요청 수락";
-			}else{
+			} else {
 				msg = "Req Accept";
 			}
-
-			// 알림 메세지 발송
+			
+			// Send app notification
 			AlarmAddDto alarmAddDto = new AlarmAddDto();
 			alarmAddDto.setAlarmSj(msg);
 			String message1 = ConstUtil.DESIGNER_TARGET_MSG1;
@@ -867,15 +882,15 @@ public class TransactionService {
 			alarmAddDto.setAlarmSe("D");
 			alarmAddDto.setAlarmUrl(url);
 			alarmAddDto.setMemberNo(Integer.parseInt(alarmTalkDto.getDesignerNo()));
-
+			
 			int isAlarm = commonService.selectAlarm(Integer.parseInt(alarmTalkDto.getDesignerNo()), 10);
-            if (isAlarm > 0) {
-            	commonService.postAlarm(alarmAddDto);
-            	
-            	PushDto push = new PushDto();
-                push.setBody(message1);
-                commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, url);
-            }
+			if (isAlarm > 0) {
+				commonService.postAlarm(alarmAddDto);
+				
+				PushDto push = new PushDto();
+				push.setBody(message1);
+				commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getDesignerNo()), push, url);
+			}
 		}else{ // 요청 거절
 			result = frontTransactionMapper.updateRequestStatus(requestFormNo, "E", SecurityUtil.getMemberNo());
 			if(result > 0){
@@ -919,50 +934,6 @@ public class TransactionService {
 	                commonService.postFCMPush(Integer.parseInt(alarmTalkDto.getRegisterNo()), push, "/payment");
 	            }
 			}
-			/*
-			2024-10-02 jjchoi
-			@최정주 @박성현
-			최종적으로 정리된 내용 공유드립니다.
-			아래로 작업 부탁드려요!
-			1.채팅 내 거래내역 빼기
-			2.채팅은 알림톡에서 아예 빼기
-			*/
-			/*ChatRoomAddDto chatRoomAddDto = new ChatRoomAddDto();
-			chatRoomAddDto = frontTransactionMapper.selectTransactionChat(requestFormNo);
-
-			if("B".equals(chatRoomAddDto.getRequestFormSe())){	// 지정 요청시에만 채팅을 보낸다.
-				//채팅처리 예제
-				chatRoomAddDto.setMemberSe("C");
-
-				ChatRoomDto chatRoomDto = new ChatRoomDto();
-				chatRoomDto.setMemberNo(chatRoomAddDto.getRequestNo());
-				chatRoomDto.setTargetSe(chatRoomAddDto.getMemberSe());
-				chatRoomDto.setTargetNo(chatRoomAddDto.getTargetNo());
-
-				ChatRoomVo chatRoomVo = chatMapper.selectChatRoomRequestForRequest(chatRoomDto);
-				//int chatRoomNo = chatService.postChatRoom(chatRoomAddDto);
-				int chatRoomNo = 0;
-				if(chatRoomVo == null) {
-					ChatRoomAddDto addDto = new ChatRoomAddDto();
-					addDto.setMemberNo(chatRoomAddDto.getRequestNo());
-					addDto.setTargetNo(chatRoomAddDto.getTargetNo());
-					addDto.setMemberSe(chatRoomAddDto.getMemberSe());
-
-					int addRoomResult = chatMapper.insertChatRoom(addDto);
-					chatRoomNo = addDto.getRoomNo();
-				} else {
-					chatRoomNo = chatRoomVo.getRoomNo();
-				}
-
-				ChatAddDto chatAddDto = new ChatAddDto();
-				chatAddDto.setMsgType("7");
-				chatAddDto.setFromNo(chatRoomAddDto.getTargetNo());
-				chatAddDto.setToNo(chatRoomAddDto.getRequestNo());
-				Map<String,Object> msg = new HashMap<>();
-				msg.put("requestFormNo", requestFormNo);
-				chatAddDto.setMsg(new Gson().toJson(msg));
-				int chatNo = chatService.postChat(chatRoomNo, chatAddDto);
-			}*/
 		}
 		return result;
 	}

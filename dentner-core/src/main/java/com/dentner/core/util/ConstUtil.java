@@ -21,6 +21,7 @@ public class ConstUtil {
     public static String REQUEST_OPEN_MSG18 = "#{요청서} 요청서의 취소 요청이 접수 되었습니다. 사유를 확인해주세요.";
     public static String REQUEST_OPEN_MSG19 = "의뢰하신 #{프로젝트}가 취소되었습니다.";
     public static String REQUEST_OPEN_MSG20 = "#{요청서}가 거절되어 거래가 취소되었어요. 취소된 요청서에 대한 의뢰서는 의뢰서 바구니에 다시 저장돼요";
+    public static String REQUEST_OPEN_MSG21 = "요청하신 #{요청서명}에 대한 #{치자이너}님이 CAD File을 업로드 했습니다.";
 
 
     public static String DESIGNER_OPEN_MSG1 = "{의뢰인 닉네임}님과 매칭되었어요. 요청서 수락 후, 의뢰서를 수령해주세요!";
@@ -76,6 +77,7 @@ public class ConstUtil {
     public static String REQUEST_OPEN_ENG_MSG18 = "Cancel request for #{요청서} filed Review the reason(s). Contact Dentner about unreasonable cancellation reqs.";
     public static String REQUEST_OPEN_ENG_MSG19 = "#{프로젝트} cancelled";
     public static String REQUEST_OPEN_ENG_MSG20 = "#{요청서} has been denied, and the transaction has been canceled. The request form for the canceled request is saved in your request basket.";
+    public static String REQUEST_OPEN_ENG_MSG21 = "#{치자이너} uploaded a CAD file for #{요청서명}.";
 
 
     public static String DESIGNER_OPEN_ENG_MSG1 = "{의뢰인 닉네임}님과 매칭되었어요. 요청서 수락 후, 의뢰서를 수령해주세요!";

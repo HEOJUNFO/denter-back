@@ -172,7 +172,7 @@ public class TransactionController implements V1ApiVersion {
     @ResponseMessage("의뢰서 계약 선택 성공")
     @Operation(summary = "의뢰서 계약 선택", description = "의뢰서 계약을 진행할지 선택한다.")
     @Parameter(name = "requestFormNo", description = "요청서 NO", example = "",  schema = @Schema(type = "integer", format = "int32"))
-    public int putTransactionContract(@PathVariable("requestFormNo") Integer requestFormNo, @RequestBody RequestFormContractDto requestFormContractDto){
+    public int putTransactionContract(@PathVariable("requestFormNo") Integer requestFormNo, @RequestBody RequestFormContractDto requestFormContractDto) throws Exception{
         return transactionService.putTransactionContract(requestFormNo, requestFormContractDto);
     }
 

@@ -106,6 +106,57 @@ public class EmailUtil {
         return contentBuilder.toString();
     }
 
+    public static String readCadUploadSurchargeHTMLTemplate(AlarmTalkDto alarmTalkDto) {
+        StringBuilder contentBuilder = new StringBuilder();
+        try (InputStream inputStream = getResourceAsStream("cad_upload_surcharge.html");
+             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.replace("#{요청서 명}", alarmTalkDto.getRequestFormSj());
+                line = line.replace("#{의뢰인}", alarmTalkDto.getRequestNickName());
+                line = line.replace("#{치자이너}", alarmTalkDto.getDesignerNickName());
+                contentBuilder.append(line).append("\n");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return contentBuilder.toString();
+    }
+
+    public static String readCadRemakeHTMLTemplate(AlarmTalkDto alarmTalkDto) {
+        StringBuilder contentBuilder = new StringBuilder();
+        try (InputStream inputStream = getResourceAsStream("remake.html");
+             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.replace("#{요청서 명}", alarmTalkDto.getRequestFormSj());
+                line = line.replace("#{의뢰인}", alarmTalkDto.getRequestNickName());
+                line = line.replace("#{치자이너}", alarmTalkDto.getDesignerNickName());
+                contentBuilder.append(line).append("\n");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return contentBuilder.toString();
+    }
+
+    public static String readCadRemakeSurchargeHTMLTemplate(AlarmTalkDto alarmTalkDto) {
+        StringBuilder contentBuilder = new StringBuilder();
+        try (InputStream inputStream = getResourceAsStream("remake_surcharge.html");
+             BufferedReader br = new BufferedReader(new InputStreamReader(inputStream))) {
+            String line;
+            while ((line = br.readLine()) != null) {
+                line = line.replace("#{요청서 명}", alarmTalkDto.getRequestFormSj());
+                line = line.replace("#{의뢰인}", alarmTalkDto.getRequestNickName());
+                line = line.replace("#{치자이너}", alarmTalkDto.getDesignerNickName());
+                contentBuilder.append(line).append("\n");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return contentBuilder.toString();
+    }
+
     public static String readJoinApprovedHTMLTemplate(AlarmTalkDto alarmTalkDto) {
         StringBuilder contentBuilder = new StringBuilder();
         try (InputStream inputStream = getResourceAsStream("join_approved.html");
